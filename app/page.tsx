@@ -1,12 +1,21 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { GridCircle, SearchAlt, Bell } from "nasicon-react/solid"
+import {
+  GridCircle,
+  SearchAlt,
+  Bell,
+  DotsHorizontal,
+} from "nasicon-react/solid"
 import {
   HouseChimneyBlank,
   Annotation,
   CirclePlay,
   User,
+  Heart,
+  MessageSquare,
+  Bookmark,
+  CornerUpRight,
 } from "nasicon-react/outline"
 
 const page = () => {
@@ -71,7 +80,7 @@ const page = () => {
               VIEW ALL
             </Button>
           </div>
-          <div className="flex gap-4 overflow-x-auto">
+          <div className="flex gap-4 overflow-x-auto pb-2">
             {lives.map((l, index) => (
               <div key={index} className="relative">
                 <Avatar className="z-10 h-15 w-15 border">
@@ -102,11 +111,63 @@ const page = () => {
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="h-[20vh] border border-black"></div>
-          <div className="h-[20vh] border border-black"></div>
-          <div className="h-[20vh] border border-black"></div>
-          <div className="h-[20vh] border border-black"></div>
-          <div className="h-[20vh] border border-black"></div>
+          <div className="h-fit rounded-lg border border-gray-400 p-2 py-3">
+            <div className="flex justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar>
+                  <AvatarImage src="https://github.com/shadcn.png" />
+                  <AvatarFallback>ofile</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h1 className="font-semibold">Grace Community</h1>
+                  <p className="text-sm font-light">2 hour ago</p>
+                </div>
+              </div>
+              <Button variant={"ghost"}>
+                <DotsHorizontal size={24} />
+              </Button>
+            </div>
+            <div className="mt-2 flex flex-col gap-1">
+              <p>
+                What a beautiful Sunday service! The choir's rendition of
+                "Amaizing Grace" brought tears to may eyes. Grateful for this
+                community.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <Badge variant={"outline"} className="text-primary">
+                  #FaithWalk
+                </Badge>
+                <Badge variant={"outline"} className="text-primary">
+                  #Community
+                </Badge>
+              </div>
+            </div>
+
+            <div className="mt-5 h-[45vh] bg-gray-300"></div>
+            <div className="flex justify-between py-3 pr-5">
+              <div className="flex gap-3">
+                <button className="flex gap-2">
+                  <Heart />
+                  1.2k
+                </button>
+
+                <button className="flex gap-2">
+                  <MessageSquare />
+                  48
+                </button>
+              </div>
+
+              <div className="flex gap-5">
+                <button>
+                  <Bookmark />
+                </button>
+
+                <button>
+                  <CornerUpRight />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
