@@ -151,14 +151,14 @@ function FeedContent() {
         <div className="space-y-4">
             {/* Daily Verse */}
             <div className="overflow-hidden rounded-2xl">
-                <div className="relative min-h-[150px] bg-cover bg-center px-4 py-5" style={{ backgroundImage: "url('/background.jpg')" }}>
+                <div className="relative min-h-[150px] lg:min-h-[220px] bg-cover bg-center px-4 py-5 lg:px-8 lg:py-10" style={{ backgroundImage: "url('/background.jpg')" }}>
                     <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-black/70 to-blue-900/60" />
                     <div className="relative z-10 space-y-2">
                         <p className="text-[10px] font-semibold tracking-widest text-blue-300 uppercase">Daily Scripture</p>
-                        <p className="text-xl font-bold leading-snug text-white lg:text-2xl">
+                        <p className="text-xl font-bold leading-snug text-white lg:text-3xl xl:text-4xl">
                             &ldquo;The Lord is my light and my salvation&mdash;whom shall I fear?&rdquo;
                         </p>
-                        <p className="text-sm font-semibold text-blue-300">Psalm 27:1</p>
+                        <p className="text-sm font-semibold text-blue-300 lg:text-base">Psalm 27:1</p>
                     </div>
                 </div>
             </div>
@@ -210,8 +210,8 @@ function FeedContent() {
                             ))}
                         </div>
                         {post.hasVideo
-                            ? <div className="mt-3 h-48 rounded-xl bg-gray-300 dark:bg-gray-700 flex items-center justify-center"><div className="flex size-14 items-center justify-center rounded-full bg-primary/80"><span className="text-white text-2xl">▶</span></div></div>
-                            : <div className="mt-3 h-44 rounded-xl bg-gray-200 dark:bg-gray-700" />
+                            ? <div className="mt-3 h-48 lg:h-[340px] xl:h-[400px] rounded-xl bg-gray-300 dark:bg-gray-700 flex items-center justify-center"><div className="flex size-14 lg:size-20 items-center justify-center rounded-full bg-primary/80"><span className="text-white text-2xl lg:text-4xl">▶</span></div></div>
+                            : <div className="mt-3 h-44 lg:h-[300px] xl:h-[360px] rounded-xl bg-gray-200 dark:bg-gray-700" />
                         }
                         <div className="mt-3 flex items-center justify-between">
                             <div className="flex items-center gap-4">

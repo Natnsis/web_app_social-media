@@ -10,8 +10,7 @@ import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
     HouseChimneyBlank, Annotation, CirclePlay, User,
-    Users, BookOpen, CalendarAlt, Gear, Bell, Search,
-    Heart,
+    Gear, Bell, Search, Heart,
 } from "nasicon-react/outline"
 import {
     HouseChimneyBlank as HouseChimneyBlankSolid,
@@ -29,10 +28,8 @@ const mobileNavItems = [
 
 const desktopNavItems = [
     { href: "/", label: "Home", Icon: HouseChimneyBlank, ActiveIcon: HouseChimneyBlankSolid },
-    { href: "/chats", label: "Messages", Icon: Annotation, ActiveIcon: AnnotationSolid },
-    { href: "/account", label: "Community", Icon: Users, ActiveIcon: Users },
-    { href: "/account", label: "Resources", Icon: BookOpen, ActiveIcon: BookOpen },
-    { href: "/account", label: "Events", Icon: CalendarAlt, ActiveIcon: CalendarAlt },
+    { href: "/chats", label: "Chats", Icon: Annotation, ActiveIcon: AnnotationSolid },
+    { href: "/shorts", label: "Shorts", Icon: CirclePlay, ActiveIcon: CirclePlaySolid },
     { href: "/account", label: "Account", Icon: User, ActiveIcon: UserSolid },
     { href: "/account/settings", label: "Settings", Icon: Gear, ActiveIcon: Gear },
 ]
