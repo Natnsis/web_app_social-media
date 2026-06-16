@@ -18,12 +18,12 @@ import {
 } from "nasicon-react/outline"
 
 const liveUsers = [
-    { name: "Grace Ch...", initials: "GC" },
-    { name: "Hope Val...", initials: "HV" },
-    { name: "Unity", initials: "UN" },
-    { name: "The Well", initials: "TW" },
-    { name: "New Life", initials: "NL" },
-    { name: "Zion", initials: "ZN" },
+    { name: "Grace Ch...", initials: "GC", id: "grace-ch" },
+    { name: "Hope Val...", initials: "HV", id: "hope-val" },
+    { name: "Unity", initials: "UN", id: "unity" },
+    { name: "The Well", initials: "TW", id: "the-well" },
+    { name: "New Life", initials: "NL", id: "new-life" },
+    { name: "Zion", initials: "ZN", id: "zion" },
 ]
 
 const posts = [
@@ -169,20 +169,21 @@ export default function HomePage() {
                             VIEW ALL
                         </Button>
                     </div>
-                    <div className="flex gap-4 overflow-x-auto pb-2">
+                    <div className="flex h-fit gap-4 overflow-x-auto pb-1">
                         {liveUsers.map((u, i) => (
-                            <div key={i} className="relative flex shrink-0 flex-col items-center gap-1">
+                            <Link key={i} href={`/live/${u.id}`}
+                                className="relative flex shrink-0 flex-col items-center gap-1">
                                 <div className="relative">
                                     <Avatar className="size-14 ring-2 ring-red-500 ring-offset-1">
                                         <AvatarFallback className="bg-muted text-xs font-medium">{u.initials}</AvatarFallback>
                                     </Avatar>
                                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5">
-                                        <div className="size-1 rounded-full bg-white" />
+                                        <div className="size-1 rounded-full bg-white animate-pulse" />
                                         <span className="text-[8px] font-bold text-white">LIVE</span>
                                     </div>
                                 </div>
-                                <span className="mt-1 w-14 truncate text-center text-[10px] text-muted-foreground">{u.name}</span>
-                            </div>
+                                <span className="mt-2 w-14 truncate text-center text-[10px] text-muted-foreground">{u.name}</span>
+                            </Link>
                         ))}
                     </div>
                 </div>
