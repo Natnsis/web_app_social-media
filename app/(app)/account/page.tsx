@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,7 +12,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuthStore } from "@/lib/store/auth"
 import {
     Gear, ChevronDown, Globe, Heart, Bookmark, Eye,
-    MessageSquare, CornerUpRight,
+    MessageSquare, CornerUpRight, ArrowRightFromBracket,
 } from "nasicon-react/outline"
 import { DotsHorizontal, CirclePlus } from "nasicon-react/solid"
 
@@ -31,8 +32,9 @@ const savedPosts = [
 ]
 
 export default function AccountPage() {
+    const router = useRouter()
     const [activeFilter, setActiveFilter] = useState("All")
-    const { user } = useAuthStore()
+    const { user, logout } = useAuthStore()
 
     return (
         <div className="relative flex h-full flex-col overflow-hidden">
@@ -49,6 +51,10 @@ export default function AccountPage() {
                             <Gear size={20} />
                         </Button>
                     </Link>
+                    <Button variant="ghost" size="icon-sm" aria-label="Logout"
+                        onClick={() => { logout(); router.push("/login") }}>
+                        <ArrowRightFromBracket size={18} className="text-destructive" />
+                    </Button>
                 </div>
             </header>
 
@@ -161,11 +167,13 @@ export default function AccountPage() {
                 </Tabs>
             </div>
 
-            {/* FAB */}
-            <Link href="/account/create-post"
-                className="absolute bottom-4 right-4 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
-                <CirclePlus size={28} />
-            </Link>
+            {/* FAB — Church Owner only */}
+            {user?.role === "Church Owner" && (
+                <Link href="/account/create-post"
+                    className="absolute bottom-4 right-4 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
+                    <CirclePlus size={28} />
+                </Link>
+            )}
         </div>
     )
 }

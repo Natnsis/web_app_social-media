@@ -10,11 +10,38 @@ export interface AuthUser {
   org: string
 }
 
+const users: Record<string, { password: string; user: AuthUser }> = {
+  "user@gmail.com": {
+    password: "1234",
+    user: {
+      id: "1",
+      name: "Abebe Tesfaye",
+      email: "user@gmail.com",
+      initials: "AT",
+      role: "Church Owner",
+      org: "Beza International",
+    },
+  },
+  user2: {
+    password: "1234",
+    user: {
+      id: "2",
+      name: "Biruk Lemma",
+      email: "user2",
+      initials: "BL",
+      role: "Follower",
+      org: "Beza International",
+    },
+  },
+}
+
 interface AuthState {
   user: AuthUser | null
   isAuthenticated: boolean
-  login: (email: string, password: string) => void
+  loginError: string | null
+  login: (email: string, password: string) => boolean
   logout: () => void
+  clearError: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -22,20 +49,22 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
-      login: (_email: string, _password: string) => {
+      loginError: null,
+      login: (email: string, password: string) => {
+        const entry = users[email]
+        if (!entry || entry.password !== password) {
+          set({ loginError: "Invalid email or password" })
+          return false
+        }
         set({
           isAuthenticated: true,
-          user: {
-            id: "1",
-            name: "Abebe Tesfaye",
-            email: "abebe@beza.org",
-            initials: "AT",
-            role: "Global Administrator",
-            org: "Beza International",
-          },
+          user: entry.user,
+          loginError: null,
         })
+        return true
       },
-      logout: () => set({ user: null, isAuthenticated: false }),
+      logout: () => set({ user: null, isAuthenticated: false, loginError: null }),
+      clearError: () => set({ loginError: null }),
     }),
     {
       name: "faith-connect-auth",

@@ -22,10 +22,10 @@ function BrandLogo() {
 
 export default function LoginPage() {
     const router = useRouter()
-    const login = useAuthStore((s) => s.login)
+    const { login, loginError, clearError } = useAuthStore()
     const [mode, setMode] = useState<"login" | "signup">("login")
-    const [email, setEmail] = useState("abebe@beza.org")
-    const [password, setPassword] = useState("password123")
+    const [email, setEmail] = useState("user@gmail.com")
+    const [password, setPassword] = useState("1234")
     const [name, setName] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
     const [loading, setLoading] = useState(false)
@@ -46,8 +46,13 @@ export default function LoginPage() {
     function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         setLoading(true)
-        login(email, password)
-        router.replace("/")
+        clearError()
+        const ok = login(email, password)
+        if (ok) {
+            router.replace("/")
+        } else {
+            setLoading(false)
+        }
     }
 
     if (checking) {
@@ -198,10 +203,20 @@ export default function LoginPage() {
                             </label>
                         )}
 
+                        {loginError && (
+                            <p className="text-xs text-red-400 text-center">{loginError}</p>
+                        )}
+
                         <Button type="submit" disabled={loading}
                             className="h-11 w-full rounded-xl text-sm font-semibold gap-2 mt-1">
                             {loading ? "Please wait..." : mode === "login" ? "Sign In →" : "Create Account →"}
                         </Button>
+
+                        {mode === "login" && (
+                            <p className="text-center text-[11px] text-white/40">
+                                Demo: <span className="font-mono">user@gmail.com</span> / <span className="font-mono">user2</span> &nbsp;(password: <span className="font-mono">1234</span>)
+                            </p>
+                        )}
                     </form>
 
                     <div className="relative flex items-center gap-3">

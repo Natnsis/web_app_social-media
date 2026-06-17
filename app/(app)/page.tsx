@@ -151,14 +151,14 @@ function FeedContent() {
         <div className="space-y-4">
             {/* Daily Verse */}
             <div className="overflow-hidden rounded-2xl">
-                <div className="relative min-h-[150px] lg:min-h-[220px] bg-cover bg-center px-4 py-5 lg:px-8 lg:py-10" style={{ backgroundImage: "url('/background.jpg')" }}>
+                <div className="relative min-h-[150px] bg-cover bg-center px-4 py-5" style={{ backgroundImage: "url('/background.jpg')" }}>
                     <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-black/70 to-blue-900/60" />
                     <div className="relative z-10 space-y-2">
                         <p className="text-[10px] font-semibold tracking-widest text-blue-300 uppercase">Daily Scripture</p>
-                        <p className="text-xl font-bold leading-snug text-white lg:text-3xl xl:text-4xl">
+                        <p className="text-xl font-bold leading-snug text-white">
                             &ldquo;The Lord is my light and my salvation&mdash;whom shall I fear?&rdquo;
                         </p>
-                        <p className="text-sm font-semibold text-blue-300 lg:text-base">Psalm 27:1</p>
+                        <p className="text-sm font-semibold text-blue-300">Psalm 27:1</p>
                     </div>
                 </div>
             </div>
@@ -169,7 +169,7 @@ function FeedContent() {
                     <h2 className="text-sm font-bold text-primary">Live Now</h2>
                     <Button variant="outline" size="xs" className="rounded-full border-primary/50 text-primary text-[10px]">See all</Button>
                 </div>
-                <div className="flex h-fit gap-4 overflow-x-auto pb-1">
+                <div className="flex h-fit gap-4 overflow-x-auto px-1 py-1">
                     {liveUsers.map((u, i) => (
                         <Link key={i} href={`/live/${u.id}`} className="relative flex shrink-0 flex-col items-center gap-1">
                             <div className="relative">
@@ -210,8 +210,8 @@ function FeedContent() {
                             ))}
                         </div>
                         {post.hasVideo
-                            ? <div className="mt-3 h-48 lg:h-[340px] xl:h-[400px] rounded-xl bg-gray-300 dark:bg-gray-700 flex items-center justify-center"><div className="flex size-14 lg:size-20 items-center justify-center rounded-full bg-primary/80"><span className="text-white text-2xl lg:text-4xl">▶</span></div></div>
-                            : <div className="mt-3 h-44 lg:h-[300px] xl:h-[360px] rounded-xl bg-gray-200 dark:bg-gray-700" />
+                            ? <div className="mt-3 h-48 rounded-xl bg-gray-300 dark:bg-gray-700 flex items-center justify-center"><div className="flex size-14 items-center justify-center rounded-full bg-primary/80"><span className="text-white text-2xl">▶</span></div></div>
+                            : <div className="mt-3 h-44 rounded-xl bg-gray-200 dark:bg-gray-700" />
                         }
                         <div className="mt-3 flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -307,6 +307,7 @@ function DesktopRightPanel() {
 }
 
 export default function HomePage() {
+    const { user } = useAuthStore()
     const [drawerOpen, setDrawerOpen] = useState(false)
     const [fabOpen, setFabOpen] = useState(false)
 
@@ -314,8 +315,10 @@ export default function HomePage() {
         <>
             {/* ── Desktop layout (lg+): full-width with right panel ── */}
             <div className="hidden lg:flex h-full overflow-hidden">
-                <div className="flex-1 overflow-y-auto px-6 py-5">
-                    <FeedContent />
+                <div className="flex-1 overflow-y-auto px-3 md:px-5 py-5">
+                    <div className="mx-auto max-w-2xl">
+                        <FeedContent />
+                    </div>
                 </div>
                 <DesktopRightPanel />
             </div>
@@ -346,25 +349,27 @@ export default function HomePage() {
                     <div className="pb-24" />
                 </div>
 
-                {/* FAB speed-dial */}
-                <div className="absolute bottom-4 right-4 z-30 flex flex-col-reverse items-end gap-3">
-                    {fabOpen && fabItems.map((item, i) => (
-                        <Link key={i} href={item.href} onClick={() => setFabOpen(false)}
-                            className="flex items-center gap-3 animate-in slide-in-from-bottom-2 fade-in-0"
-                            style={{ animationDelay: `${i * 40}ms` }}>
-                            <span className="rounded-xl bg-background px-3 py-1.5 text-sm font-semibold shadow-md border border-border">{item.label}</span>
-                            <div className="flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
-                                <item.Icon size={20} />
-                            </div>
-                        </Link>
-                    ))}
-                    <button
-                        onClick={() => setFabOpen((v) => !v)}
-                        className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform duration-200"
-                        style={{ transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)" }}>
-                        {fabOpen ? <Xmark size={24} /> : <CirclePlus size={28} />}
-                    </button>
-                </div>
+                {/* FAB speed-dial — Church Owner only */}
+                {user?.role === "Church Owner" && (
+                    <div className="absolute bottom-4 right-4 z-30 flex flex-col-reverse items-end gap-3">
+                        {fabOpen && fabItems.map((item, i) => (
+                            <Link key={i} href={item.href} onClick={() => setFabOpen(false)}
+                                className="flex items-center gap-3 animate-in slide-in-from-bottom-2 fade-in-0"
+                                style={{ animationDelay: `${i * 40}ms` }}>
+                                <span className="rounded-xl bg-background px-3 py-1.5 text-sm font-semibold shadow-md border border-border">{item.label}</span>
+                                <div className="flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
+                                    <item.Icon size={20} />
+                                </div>
+                            </Link>
+                        ))}
+                        <button
+                            onClick={() => setFabOpen((v) => !v)}
+                            className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform duration-200"
+                            style={{ transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)" }}>
+                            {fabOpen ? <Xmark size={24} /> : <CirclePlus size={28} />}
+                        </button>
+                    </div>
+                )}
             </div>
         </>
     )

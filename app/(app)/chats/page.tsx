@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { CirclePlus } from "nasicon-react/solid"
 import { Search } from "nasicon-react/outline"
+import { useAuthStore } from "@/lib/store/auth"
 
 const directChats = [
     { id: "brother-dawit", name: "Brother Dawit", initials: "BD", time: "12:45 PM", lastMsg: "God bless you. See you at...", unread: 1, online: true },
@@ -21,6 +22,7 @@ const groupChats = [
 ]
 
 export default function ChatsPage() {
+    const { user } = useAuthStore()
     const [tab, setTab] = useState<"direct" | "groups">("direct")
     const chats = tab === "direct" ? directChats : groupChats
 
@@ -78,11 +80,13 @@ export default function ChatsPage() {
                 ))}
             </div>
 
-            {/* FAB → new group */}
-            <Link href="/chats/new-group"
-                className="absolute bottom-4 right-4 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
-                <CirclePlus size={28} />
-            </Link>
+            {/* FAB → new group — Church Owner only */}
+            {user?.role === "Church Owner" && (
+                <Link href="/chats/new-group"
+                    className="absolute bottom-4 right-4 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
+                    <CirclePlus size={28} />
+                </Link>
+            )}
         </div>
     )
 }

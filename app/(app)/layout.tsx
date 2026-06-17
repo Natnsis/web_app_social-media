@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
     HouseChimneyBlank, Annotation, CirclePlay, User,
-    Gear, Bell, Search, Heart,
+    Gear, Bell, Search, Heart, PenSquare, ArrowRightFromBracket,
 } from "nasicon-react/outline"
 import {
     HouseChimneyBlank as HouseChimneyBlankSolid,
@@ -73,6 +73,13 @@ function DesktopSidebar({ pathname }: { pathname: string }) {
                         </Link>
                     )
                 })}
+                {user?.role === "Church Owner" && (
+                    <Link href="/account/create-post"
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all text-muted-foreground hover:bg-muted hover:text-foreground">
+                        <PenSquare size={18} />
+                        <span>Create Post</span>
+                    </Link>
+                )}
             </nav>
 
             {/* Give Now CTA */}
@@ -91,7 +98,7 @@ function DesktopSidebar({ pathname }: { pathname: string }) {
                 <button
                     onClick={() => { logout(); router.push("/login") }}
                     className="flex w-full items-center gap-2 text-xs text-muted-foreground hover:text-destructive py-1">
-                    Help
+                    <ArrowRightFromBracket size={13} /> Logout
                 </button>
             </div>
         </aside>
