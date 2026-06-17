@@ -1,70 +1,87 @@
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
+import { apiLogout } from "@/lib/api/auth"
 
 export interface AuthUser {
   id: string
   name: string
   email: string
   initials: string
+  roles: string[]
   role: string
   org: string
 }
 
-const users: Record<string, { password: string; user: AuthUser }> = {
-  "user@gmail.com": {
-    password: "1234",
-    user: {
-      id: "1",
-      name: "Abebe Tesfaye",
-      email: "user@gmail.com",
-      initials: "AT",
-      role: "Church Owner",
-      org: "Beza International",
-    },
-  },
-  user2: {
-    password: "1234",
-    user: {
-      id: "2",
-      name: "Biruk Lemma",
-      email: "user2",
-      initials: "BL",
-      role: "Follower",
-      org: "Beza International",
-    },
-  },
-}
-
 interface AuthState {
+  accessToken: string | null
+  refreshToken: string | null
   user: AuthUser | null
   isAuthenticated: boolean
-  loginError: string | null
-  login: (email: string, password: string) => boolean
-  logout: () => void
-  clearError: () => void
+  setAuthData: (accessToken: string, refreshToken: string) => void
+  logout: () => Promise<void>
+}
+
+export function decodeJwt(token: string): AuthUser | null {
+  try {
+    const base64Url = token.split(".")[1]
+    if (!base64Url) return null
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    )
+    const payload = JSON.parse(jsonPayload)
+    const roles = payload.roles || []
+    const isChurchOwner = roles.includes("CHURCH_OWNER")
+    return {
+      id: payload.sub || "1",
+      name: payload.name || "Abebe Tesfaye",
+      email: payload.email || "user@example.com",
+      initials: payload.name ? payload.name.split(" ").map((n: string) => n[0]).join("").toUpperCase() : "AT",
+      roles: roles,
+      role: isChurchOwner ? "Church Owner" : "Follower",
+      org: payload.org || "Beza International",
+    }
+  } catch (error) {
+    console.error("Failed to decode JWT token:", error)
+    return null
+  }
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      accessToken: null,
+      refreshToken: null,
       user: null,
       isAuthenticated: false,
-      loginError: null,
-      login: (email: string, password: string) => {
-        const entry = users[email]
-        if (!entry || entry.password !== password) {
-          set({ loginError: "Invalid email or password" })
-          return false
+      setAuthData: (accessToken: string, refreshToken: string) => {
+        const decoded = decodeJwt(accessToken)
+        set({
+          accessToken,
+          refreshToken,
+          user: decoded,
+          isAuthenticated: !!decoded,
+        })
+      },
+      logout: async () => {
+        const { accessToken } = get()
+        if (accessToken) {
+          try {
+            await apiLogout(accessToken)
+          } catch (e) {
+            console.error("API logout request failed", e)
+          }
         }
         set({
-          isAuthenticated: true,
-          user: entry.user,
-          loginError: null,
+          accessToken: null,
+          refreshToken: null,
+          user: null,
+          isAuthenticated: false,
         })
-        return true
       },
-      logout: () => set({ user: null, isAuthenticated: false, loginError: null }),
-      clearError: () => set({ loginError: null }),
     }),
     {
       name: "faith-connect-auth",

@@ -316,7 +316,7 @@ export default function HomePage() {
             {/* ── Desktop layout (lg+): full-width with right panel ── */}
             <div className="hidden lg:flex h-full overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-3 md:px-5 py-5">
-                    <div className="mx-auto max-w-2xl">
+                    <div className="mx-auto max-w-3xl">
                         <FeedContent />
                     </div>
                 </div>

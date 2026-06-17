@@ -233,7 +233,7 @@ function ShortItem({ short }: { short: Short }) {
 
 export default function ShortsPage() {
     return (
-        <div className="h-full w-full snap-y snap-mandatory overflow-y-scroll lg:px-12 xl:px-24 2xl:px-48">
+        <div className="h-full w-full snap-y snap-mandatory overflow-y-scroll lg:px-12 xl:px-24 2xl:px-48 [mask-image:linear-gradient(to_bottom,transparent_0%,black_8%,black_92%,transparent_100%)]">
             {shortsData.map((short) => (
                 <div key={short.id} className="h-full w-full snap-start rounded-none lg:rounded-2xl overflow-hidden">
                     <ShortItem short={short} />
