@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,10 @@ import {
     Xmark, ArrowRightFromBracket, Church,
     TowerBroadcast, Video, PenSquare, CalendarAlt, LocationPin,
 } from "nasicon-react/outline"
+import {
+    BarChart3, CalendarPlus, Clapperboard, FileText, MessageCircleWarning,
+    PlayCircle, Radio, Sparkles,
+} from "lucide-react"
 
 const liveUsers = [
     { name: "Grace Ch...", initials: "GC", id: "grace-ch" },
@@ -32,6 +37,7 @@ const posts = [
         text: "What a beautiful Sunday service! The choir\u2019s rendition of \u201cAmazing Grace\u201d brought tears to my eyes. Grateful for this community. \uD83D\uDE4F\u2728",
         hashtags: ["#FaithWalk", "#Community"],
         likes: "1.2k", comments: "48", views: "3.4k",
+        tone: "from-primary/25 to-primary/5",
     },
     {
         id: 2, author: "Grace Community", initials: "GC", time: "2 hours ago",
@@ -39,13 +45,30 @@ const posts = [
         hashtags: ["#Worship", "#BezaTeam"],
         likes: "856", comments: "12", views: "2k",
         hasVideo: true,
+        tone: "from-primary/30 to-muted",
     },
     {
         id: 3, author: "Pastor Marcus", initials: "PM", time: "3 hours ago",
         text: "May your week be filled with the goodness of the Holy Spirit. Remember that no challenge is too great when we walk in faith. Let us continue to support one another in prayer and fellowship.",
         hashtags: ["#Faith", "#Prayer"],
         likes: "2.1k", comments: "84", views: "6.2k",
+        tone: "from-primary/20 to-background",
     },
+]
+
+const ownerActions = [
+    { label: "Create Group", href: "/chats/new-group", Icon: Users, metric: "12 active" },
+    { label: "Post Event", href: "/account/create-post", Icon: CalendarPlus, metric: "3 drafts" },
+    { label: "Publish Article", href: "/account/create-post", Icon: FileText, metric: "21 reads" },
+    { label: "Go Live", href: "/shorts", Icon: Radio, metric: "Prime time" },
+    { label: "Upload Video", href: "/account/create-post", Icon: Clapperboard, metric: "Shorts ready" },
+    { label: "Moderation", href: "/account/settings", Icon: MessageCircleWarning, metric: "4 queued" },
+]
+
+const desktopTrends = [
+    { label: "Sunday Recap", value: "18.4k views" },
+    { label: "Youth Worship", value: "7 live rooms" },
+    { label: "Giving Campaign", value: "82% funded" },
 ]
 
 const fabItems = [
@@ -231,24 +254,167 @@ function FeedContent() {
     )
 }
 
+function DesktopStoryRail() {
+    return (
+        <div className="flex gap-5 overflow-x-auto px-3 py-2">
+            {liveUsers.map((u, i) => (
+                <Link key={u.id} href={`/live/${u.id}`} className="group flex w-16 shrink-0 flex-col items-center gap-2">
+                    <div className="relative">
+                        <div className="absolute -inset-1 rounded-full bg-primary/25 transition-transform group-hover:scale-105" />
+                        <Avatar className="relative size-14 border-2 border-background">
+                            <AvatarFallback className="bg-card text-xs font-bold">{u.initials}</AvatarFallback>
+                        </Avatar>
+                        {i === 0 && (
+                            <div className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full border-2 border-background bg-primary text-[13px] font-bold text-primary-foreground">
+                                +
+                            </div>
+                        )}
+                    </div>
+                    <span className="w-full truncate text-center text-[11px] font-semibold">{i === 0 ? "You" : u.name}</span>
+                </Link>
+            ))}
+        </div>
+    )
+}
+
+function DesktopComposer({ isOwner }: { isOwner: boolean }) {
+    return (
+        <div className="rounded-2xl border border-border bg-card p-4">
+            <p className="mb-3 text-sm font-bold">Post something meaningful</p>
+            <div className="flex items-center gap-3">
+                <Avatar>
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">AT</AvatarFallback>
+                </Avatar>
+                <div className="flex h-11 flex-1 items-center rounded-xl border border-border bg-muted/40 px-4 text-sm text-muted-foreground">
+                    Share a testimony, question, update, or prayer request
+                </div>
+                <Button className="size-11 rounded-xl" size="icon" aria-label="Publish">
+                    <CornerUpRight size={20} />
+                </Button>
+            </div>
+            {isOwner && (
+                <div className="mt-4 grid grid-cols-3 gap-2 xl:grid-cols-6">
+                    {ownerActions.map(({ label, href, Icon, metric }) => (
+                        <Link
+                            key={label}
+                            href={href}
+                            className="group rounded-xl border border-border bg-background p-3 transition-colors hover:border-primary/40 hover:bg-primary/5"
+                        >
+                            <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                <Icon size={18} />
+                            </div>
+                            <p className="truncate text-xs font-bold">{label}</p>
+                            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{metric}</p>
+                        </Link>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
+function DesktopPostCard({ post, featured = false }: { post: (typeof posts)[number]; featured?: boolean }) {
+    return (
+        <article className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Avatar className="size-11">
+                            <AvatarFallback className="bg-primary/15 text-primary text-sm font-bold">{post.initials}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <p className="font-bold leading-tight">{post.author}</p>
+                            <p className="text-xs text-muted-foreground">{post.time}</p>
+                        </div>
+                    </div>
+                    <Button variant="ghost" size="icon-sm" className="rounded-lg"><DotsHorizontal size={20} /></Button>
+                </div>
+                <p className="mt-4 text-[15px] leading-relaxed">{post.text}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                    {post.hashtags.map((tag) => (
+                        <span key={tag} className="text-sm font-semibold text-primary">{tag}</span>
+                    ))}
+                </div>
+            </div>
+
+            <div className="px-4 sm:px-5">
+                {featured ? (
+                    <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted">
+                        <Image src="/background.jpg" alt="Church community gathering" fill className="object-cover" sizes="(min-width: 1024px) 680px, 100vw" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
+                        <div className="absolute bottom-4 left-4 rounded-lg bg-background/90 px-3 py-1 text-xs font-bold backdrop-blur">Community highlight</div>
+                    </div>
+                ) : (
+                    <div className={`relative aspect-[16/9] overflow-hidden rounded-xl bg-gradient-to-br ${post.tone}`}>
+                        <div className="absolute bottom-6 right-6 flex size-14 items-center justify-center rounded-xl bg-background/85 backdrop-blur">
+                            {post.hasVideo ? <PlayCircle size={30} className="text-primary" /> : <Sparkles size={28} className="text-primary" />}
+                        </div>
+                        <div className="absolute inset-x-6 bottom-6 rounded-xl bg-background/85 p-4 backdrop-blur-sm">
+                            <p className="text-sm font-bold">{post.hasVideo ? "Worship cover preview" : "Ministry moment"}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Tap into the conversation from this week.</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <div className="flex items-center justify-between px-5 py-4">
+                <div className="flex items-center gap-5">
+                    <button className="flex items-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-red-500"><Heart size={19} /><span>{post.likes}</span></button>
+                    <button className="flex items-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"><MessageSquare size={19} /><span>{post.comments}</span></button>
+                    <button className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Eye size={19} /><span>{post.views}</span></button>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon-sm" className="rounded-lg"><Bookmark size={18} /></Button>
+                    <Button variant="ghost" size="icon-sm" className="rounded-lg"><CornerUpRight size={18} /></Button>
+                </div>
+            </div>
+        </article>
+    )
+}
+
+function DesktopFeedExperience({ isOwner }: { isOwner: boolean }) {
+    return (
+        <div className="mx-auto grid h-full max-w-[1500px] grid-cols-[minmax(0,1fr)_320px] gap-5 px-5 py-4">
+            <section className="min-w-0 overflow-y-auto pr-1">
+                <div className="mx-auto max-w-[760px] space-y-4 pb-10">
+                    <DesktopStoryRail />
+                    <DesktopComposer isOwner={isOwner} />
+                    <DesktopPostCard post={posts[0]} featured />
+                    {posts.slice(1).map((post) => <DesktopPostCard key={post.id} post={post} />)}
+                </div>
+            </section>
+            <DesktopRightPanel />
+        </div>
+    )
+}
+
 /* ── Desktop right panel ── */
 function DesktopRightPanel() {
     return (
-        <aside className="hidden xl:flex w-72 shrink-0 flex-col h-full overflow-y-auto border-l border-border bg-background/50 px-4 py-5 space-y-6">
-            <div>
-                <p className="text-xs font-bold tracking-wider text-muted-foreground uppercase mb-1">Contextual Insights</p>
-                <p className="text-[11px] text-muted-foreground">Stay updated with your community</p>
+        <aside className="hidden h-full shrink-0 flex-col overflow-y-auto rounded-2xl border border-border bg-card p-4 xl:flex">
+            <div className="rounded-xl bg-primary p-4 text-primary-foreground">
+                <p className="text-xs font-bold uppercase tracking-wider text-primary-foreground/70">Creator pulse</p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div>
+                        <p className="text-2xl font-black">24.8k</p>
+                        <p className="text-[11px] text-primary-foreground/70">weekly reach</p>
+                    </div>
+                    <div>
+                        <p className="text-2xl font-black">+18%</p>
+                        <p className="text-[11px] text-primary-foreground/70">engagement</p>
+                    </div>
+                </div>
             </div>
 
             {/* Upcoming Events */}
-            <div>
+            <div className="mt-6">
                 <div className="flex items-center justify-between mb-3">
                     <p className="flex items-center gap-1.5 text-xs font-bold"><CalendarAlt size={13} className="text-primary" /> Upcoming Events</p>
                     <button className="text-[11px] text-primary hover:underline">View All</button>
                 </div>
                 <div className="space-y-2.5">
                     {upcomingEvents.map((ev) => (
-                        <div key={ev.title} className="flex gap-3 rounded-xl border border-border bg-card p-2.5">
+                        <div key={ev.title} className="flex gap-3 rounded-xl border border-border bg-background p-3">
                             <div className="flex w-10 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary">
                                 <p className="text-[9px] font-bold uppercase leading-tight">{ev.date.split(" ")[0]}</p>
                                 <p className="text-base font-bold leading-tight">{ev.date.split(" ")[1]}</p>
@@ -264,12 +430,29 @@ function DesktopRightPanel() {
 
             <Separator />
 
+            <div>
+                <div className="mb-3 flex items-center justify-between">
+                    <p className="flex items-center gap-1.5 text-xs font-bold"><BarChart3 size={14} className="text-primary" /> Trending Now</p>
+                    <button className="text-[11px] text-primary hover:underline">See all</button>
+                </div>
+                <div className="space-y-2">
+                    {desktopTrends.map((trend) => (
+                        <div key={trend.label} className="flex items-center justify-between rounded-xl bg-muted/45 px-3 py-2.5">
+                            <p className="text-xs font-semibold">{trend.label}</p>
+                            <p className="text-[11px] text-muted-foreground">{trend.value}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <Separator />
+
             {/* Nearby Churches */}
             <div>
                 <p className="flex items-center gap-1.5 text-xs font-bold mb-3"><LocationPin size={13} className="text-primary" /> Nearby Churches</p>
                 <div className="space-y-2">
                     {nearbyChurches.map((c) => (
-                        <div key={c.name} className="flex items-center gap-2.5 rounded-xl border border-border bg-card p-2.5">
+                        <div key={c.name} className="flex items-center gap-2.5 rounded-xl border border-border bg-background p-3">
                             <Avatar size="sm">
                                 <AvatarFallback className="bg-primary/20 text-primary text-[10px]">{c.initials}</AvatarFallback>
                             </Avatar>
@@ -287,8 +470,8 @@ function DesktopRightPanel() {
 
             {/* Global Impact */}
             <div>
-                <p className="text-xs font-bold mb-3">🌍 Global Impact</p>
-                <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                <p className="text-xs font-bold mb-3">Global Impact</p>
+                <div className="rounded-xl border border-border bg-background p-4 space-y-2">
                     <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Active Missions</span>
                         <span className="font-semibold text-primary">12</span>
@@ -314,13 +497,8 @@ export default function HomePage() {
     return (
         <>
             {/* ── Desktop layout (lg+): full-width with right panel ── */}
-            <div className="hidden lg:flex h-full overflow-hidden">
-                <div className="flex-1 overflow-y-auto px-3 md:px-5 py-5">
-                    <div className="mx-auto max-w-3xl">
-                        <FeedContent />
-                    </div>
-                </div>
-                <DesktopRightPanel />
+            <div className="hidden h-full overflow-hidden bg-background lg:block">
+                <DesktopFeedExperience isOwner={user?.role === "Church Owner"} />
             </div>
 
             {/* ── Mobile layout (< lg): phone-style ── */}

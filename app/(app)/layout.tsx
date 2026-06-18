@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import {
     HouseChimneyBlank, Annotation, CirclePlay, User,
     Gear, Bell, Search, Heart, PenSquare, ArrowRightFromBracket,
+    ChartBar, Church, GridCircle,
 } from "nasicon-react/outline"
 import {
     HouseChimneyBlank as HouseChimneyBlankSolid,
@@ -27,102 +28,145 @@ const mobileNavItems = [
 ]
 
 const desktopNavItems = [
-    { href: "/", label: "Home", Icon: HouseChimneyBlank, ActiveIcon: HouseChimneyBlankSolid },
-    { href: "/chats", label: "Chats", Icon: Annotation, ActiveIcon: AnnotationSolid },
-    { href: "/shorts", label: "Shorts", Icon: CirclePlay, ActiveIcon: CirclePlaySolid },
-    { href: "/account", label: "Account", Icon: User, ActiveIcon: UserSolid },
-    { href: "/account/settings", label: "Settings", Icon: Gear, ActiveIcon: Gear },
+    {
+        title: "Community",
+        items: [
+            { href: "/", label: "Feed", Icon: HouseChimneyBlank, ActiveIcon: HouseChimneyBlankSolid },
+            { href: "/shorts", label: "Shorts", Icon: CirclePlay, ActiveIcon: CirclePlaySolid },
+            { href: "/chats", label: "Messages", Icon: Annotation, ActiveIcon: AnnotationSolid },
+        ],
+    },
+    {
+        title: "Church",
+        items: [
+            { href: "/account", label: "Church Hub", Icon: Church, ActiveIcon: Church },
+            { href: "/account/create-post", label: "Content Studio", Icon: PenSquare, ActiveIcon: PenSquare, ownerOnly: true },
+            { href: "/account/settings", label: "Settings", Icon: Gear, ActiveIcon: Gear },
+        ],
+    },
 ]
 
-function DesktopSidebar({ pathname }: { pathname: string }) {
+function DesktopSidebar({ pathname, collapsed }: { pathname: string; collapsed: boolean }) {
     const { user, logout } = useAuthStore()
     const router = useRouter()
 
     return (
-        <aside className="hidden lg:flex lg:w-56 xl:w-64 shrink-0 flex-col h-screen sticky top-0 border-r border-border bg-background/95 backdrop-blur-sm overflow-y-auto">
+        <aside className={`hidden h-screen shrink-0 overflow-hidden border-r border-border bg-card transition-[width] duration-300 lg:flex ${collapsed ? "w-20" : "w-64 xl:w-72"}`}>
+            <div className="flex h-full w-full flex-col overflow-y-auto">
             {/* Brand */}
-            <div className="px-4 py-5 border-b border-border">
-                <div className="flex items-center gap-2">
-                    <div className="flex size-8 items-center justify-center rounded-lg bg-primary shrink-0">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <div className={`border-b border-border py-5 ${collapsed ? "px-3" : "px-5"}`}>
+                <div className={`flex items-center ${collapsed ? "justify-center" : "gap-2"}`}>
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 2L2 7l10 5 10-5-10-5z" />
                             <path d="M2 17l10 5 10-5" />
                             <path d="M2 12l10 5 10-5" />
                         </svg>
                     </div>
-                    <div className="min-w-0">
-                        <p className="text-sm font-bold leading-tight truncate">Faith<span className="text-primary">Connect</span></p>
-                        <p className="text-[10px] text-muted-foreground truncate">{user?.org ?? "Beza International"}</p>
+                    <div className={`min-w-0 transition-opacity duration-200 ${collapsed ? "hidden" : "block"}`}>
+                        <p className="truncate text-base font-black leading-tight">Faith<span className="text-primary">Connect</span></p>
+                        <p className="truncate text-xs text-muted-foreground">{user?.org ?? "Beza International"}</p>
                     </div>
                 </div>
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 px-3 py-4 space-y-0.5">
-                {desktopNavItems.map(({ href, label, Icon, ActiveIcon }) => {
-                    const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href)
-                    const IconComp = isActive ? ActiveIcon : Icon
-                    return (
-                        <Link key={label} href={href}
-                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${isActive
-                                ? "bg-primary/10 text-primary"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                }`}>
-                            <IconComp size={18} />
-                            <span>{label}</span>
-                        </Link>
-                    )
-                })}
-                {user?.role === "Church Owner" && (
-                    <Link href="/account/create-post"
-                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all text-muted-foreground hover:bg-muted hover:text-foreground">
-                        <PenSquare size={18} />
-                        <span>Create Post</span>
-                    </Link>
-                )}
+            <nav className={`flex-1 space-y-5 py-4 ${collapsed ? "px-3" : "px-3"}`}>
+                {desktopNavItems.map((section) => (
+                    <div key={section.title}>
+                        {!collapsed && <p className="mb-2 px-3 text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">{section.title}</p>}
+                        <div className="space-y-1">
+                            {section.items.filter((item) => !item.ownerOnly || user?.role === "Church Owner").map(({ href, label, Icon, ActiveIcon }) => {
+                                const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href)
+                                const IconComp = isActive ? ActiveIcon : Icon
+                                return (
+                                    <Link key={label} href={href}
+                                        title={collapsed ? label : undefined}
+                                        className={`relative flex items-center rounded-xl text-sm font-semibold transition-colors ${collapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-2.5"} ${isActive
+                                            ? "bg-primary/10 text-primary"
+                                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                            }`}>
+                                        {isActive && <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-primary" />}
+                                        <IconComp size={18} />
+                                        {!collapsed && <span>{label}</span>}
+                                    </Link>
+                                )
+                            })}
+                        </div>
+                    </div>
+                ))}
             </nav>
 
             {/* Give Now CTA */}
-            <div className="px-3 pb-3">
-                <Button className="w-full gap-2 rounded-xl" size="sm">
-                    <Heart size={14} />
-                    Give Now
-                </Button>
+            <div className={`pb-4 ${collapsed ? "px-3" : "px-4"}`}>
+                <div className="rounded-xl border border-border bg-background p-3">
+                    <div className={`flex items-center gap-2 ${collapsed ? "justify-center" : "justify-between"}`}>
+                        <div className={collapsed ? "hidden" : "block"}>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Giving</p>
+                            <p className="mt-1 text-lg font-black">$18.2k</p>
+                        </div>
+                        <ChartBar size={20} className="text-primary" />
+                    </div>
+                    <Button className={`mt-3 w-full rounded-xl ${collapsed ? "px-0" : "gap-2"}`} size="sm" aria-label="Give Now">
+                        <Heart size={14} />
+                        {!collapsed && "Give Now"}
+                    </Button>
+                </div>
             </div>
 
             {/* Footer links */}
-            <div className="border-t border-border px-4 py-3 space-y-1">
-                <button className="flex w-full items-center gap-2 text-xs text-muted-foreground hover:text-foreground py-1">
-                    <Gear size={13} /> Support
+            <div className={`space-y-1 border-t border-border/70 py-4 ${collapsed ? "px-3" : "px-5"}`}>
+                <div className={`mb-3 flex items-center rounded-xl bg-muted py-2 ${collapsed ? "justify-center px-2" : "gap-2 px-3"}`}>
+                    <Avatar className="size-8">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-[11px] font-bold">{user?.initials ?? "AT"}</AvatarFallback>
+                    </Avatar>
+                    <div className={`min-w-0 ${collapsed ? "hidden" : "block"}`}>
+                        <p className="truncate text-xs font-bold">{user?.name ?? "Church Admin"}</p>
+                        <p className="truncate text-[10px] text-muted-foreground">{user?.role ?? "Member"}</p>
+                    </div>
+                </div>
+                <button className={`flex w-full items-center py-1 text-xs text-muted-foreground hover:text-foreground ${collapsed ? "justify-center" : "gap-2"}`} title={collapsed ? "Support" : undefined}>
+                    <Gear size={13} /> {!collapsed && "Support"}
                 </button>
                 <button
                     onClick={() => { logout(); router.push("/login") }}
-                    className="flex w-full items-center gap-2 text-xs text-muted-foreground hover:text-destructive py-1">
-                    <ArrowRightFromBracket size={13} /> Logout
+                    className={`flex w-full items-center py-1 text-xs text-muted-foreground hover:text-destructive ${collapsed ? "justify-center" : "gap-2"}`}
+                    title={collapsed ? "Logout" : undefined}>
+                    <ArrowRightFromBracket size={13} /> {!collapsed && "Logout"}
                 </button>
+            </div>
             </div>
         </aside>
     )
 }
 
-function DesktopTopbar() {
+function DesktopTopbar({ collapsed, onToggleSidebar }: { collapsed: boolean; onToggleSidebar: () => void }) {
     const { user } = useAuthStore()
     return (
-        <header className="hidden lg:flex shrink-0 items-center gap-3 border-b border-border bg-background/95 backdrop-blur-sm px-4 py-2.5 sticky top-0 z-10">
-            <div className="flex-1 max-w-md">
+        <header className="sticky top-0 z-10 hidden shrink-0 items-center gap-3 border-b border-border bg-background px-5 py-3 lg:flex">
+            <Button
+                variant="outline"
+                size="icon-lg"
+                className="rounded-xl bg-card"
+                onClick={onToggleSidebar}
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+                <GridCircle size={18} />
+            </Button>
+            <div className="max-w-xl flex-1">
                 <div className="relative">
-                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="Search sermons, events, or ministries..." className="pl-9 h-9 rounded-full text-sm" />
+                    <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input placeholder="Search sermons, events, groups, or ministries..." className="h-10 rounded-xl border-border bg-card pl-11 pr-4 text-sm" />
                 </div>
             </div>
-            <div className="flex items-center gap-1 ml-auto">
+            <div className="ml-auto flex items-center gap-2">
                 <ThemeToggle />
-                <Button variant="ghost" size="icon-sm" className="relative">
+                <Button variant="outline" size="icon-lg" className="relative rounded-xl bg-card">
                     <Bell size={18} />
-                    <span className="absolute top-1 right-1 size-1.5 rounded-full bg-red-500" />
+                    <span className="absolute right-2 top-2 size-2 rounded-full bg-red-500 ring-2 ring-background" />
                 </Button>
-                <Avatar size="sm" className="cursor-pointer">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">{user?.initials ?? "AT"}</AvatarFallback>
+                <Avatar className="size-10 cursor-pointer border border-border">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">{user?.initials ?? "AT"}</AvatarFallback>
                 </Avatar>
             </div>
         </header>
@@ -133,6 +177,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
     const router = useRouter()
     const [hydrated, setHydrated] = useState(false)
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
     useEffect(() => {
         const rehydrate = async () => {
@@ -173,10 +218,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <div className="min-h-screen bg-background">
             {/* ── Desktop (lg+): sidebar layout ── */}
-            <div className="hidden lg:flex h-screen overflow-hidden">
-                <DesktopSidebar pathname={pathname} />
+            <div className="hidden h-screen overflow-hidden lg:flex">
+                <DesktopSidebar pathname={pathname} collapsed={sidebarCollapsed} />
                 <div className="flex flex-1 flex-col overflow-hidden">
-                    <DesktopTopbar />
+                    <DesktopTopbar collapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed((value) => !value)} />
                     <main className="flex-1 overflow-hidden">
                         {children}
                     </main>
