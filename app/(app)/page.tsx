@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -298,12 +298,12 @@ function DesktopComposer({ isOwner }: { isOwner: boolean }) {
                         <Link
                             key={label}
                             href={href}
-                            className="group rounded-xl border border-border bg-background p-3 transition-colors hover:border-primary/40 hover:bg-primary/5"
+                            className="group rounded-xl border border-border bg-background p-2 transition-colors hover:border-primary/40 hover:bg-primary/5"
                         >
-                            <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                                <Icon size={18} />
+                            <div className="mb-2 flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                <Icon size={15} />
                             </div>
-                            <p className="truncate text-xs font-bold">{label}</p>
+                            <p className="truncate text-[11px] font-bold">{label}</p>
                             <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{metric}</p>
                         </Link>
                     ))}
@@ -373,12 +373,25 @@ function DesktopPostCard({ post, featured = false }: { post: (typeof posts)[numb
 }
 
 function DesktopFeedExperience({ isOwner }: { isOwner: boolean }) {
+    const composerRef = useRef<HTMLDivElement>(null)
+    const [composerHeight, setComposerHeight] = useState(0)
+
+    useEffect(() => {
+        if (composerRef.current) {
+            setComposerHeight(composerRef.current.offsetHeight)
+        }
+    }, [isOwner])
+
     return (
-        <div className="mx-auto grid h-full max-w-[1500px] grid-cols-[minmax(0,1fr)_320px] gap-5 px-5 py-4">
-            <section className="min-w-0 overflow-y-auto pr-1">
-                <div className="mx-auto max-w-[760px] space-y-4 pb-10">
+        <div className="mx-auto grid h-full max-w-[1500px] grid-cols-[minmax(0,1fr)_320px] gap-5 py-4">
+            <section className="min-w-0 overflow-y-auto">
+                <div className="space-y-4 px-3 pb-10">
                     <DesktopStoryRail />
-                    <DesktopComposer isOwner={isOwner} />
+                    <div className="sticky top-0 z-10" style={{ height: composerHeight || undefined }}>
+                        <div ref={composerRef}>
+                            <DesktopComposer isOwner={isOwner} />
+                        </div>
+                    </div>
                     <DesktopPostCard post={posts[0]} featured />
                     {posts.slice(1).map((post) => <DesktopPostCard key={post.id} post={post} />)}
                 </div>

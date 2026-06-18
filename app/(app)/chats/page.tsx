@@ -212,7 +212,7 @@ export default function ChatsPage() {
             </div>
 
             <div className="hidden h-full min-h-0 overflow-hidden rounded-2xl border border-border bg-card lg:flex">
-                <aside className="flex w-86 shrink-0 flex-col border-r border-border bg-card xl:w-96">
+                <aside className="flex w-[344px] shrink-0 flex-col border-r border-border bg-card xl:w-96">
                     <div className="border-b border-border px-4 py-4">
                         <div className="flex items-center justify-between gap-3">
                             <div>
@@ -263,7 +263,7 @@ export default function ChatsPage() {
             {/* FAB → new group — Church Owner only */}
             {user?.role === "Church Owner" && (
                 <Link href="/chats/new-group"
-                    className="absolute bottom-4 right-4 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
+                    className="absolute bottom-4 right-4 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg lg:hidden">
                     <CirclePlus size={28} />
                 </Link>
             )}

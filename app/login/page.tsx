@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Eye, EyeOff } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useAuthStore } from "@/lib/store/auth"
 import { useMutation } from "@tanstack/react-query"
@@ -381,14 +383,42 @@ export default function LoginPage() {
 
   if (checking) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0d1117]">
+      <div className="flex h-screen items-center justify-center bg-background">
         <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     )
   }
 
   const inputCls =
-    "h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm text-white placeholder:text-white/40 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+    "h-11 w-full rounded-xl border border-input bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+
+function PasswordInput({ value, onChange, placeholder, inputCls: extraCls }: {
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  placeholder?: string
+  inputCls?: string
+}) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <div className="relative">
+      <input
+        type={visible ? "text" : "password"}
+        placeholder={placeholder ?? "••••••••"}
+        value={value}
+        onChange={onChange}
+        className={cn(inputCls, "pr-10", extraCls)}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setVisible((v) => !v)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  )
+}
 
   const isLoading =
     loginMutation.isPending ||
@@ -401,7 +431,7 @@ export default function LoginPage() {
     resendOtpMutation.isPending
 
   return (
-    <div className="flex min-h-screen bg-[#0d1117]">
+    <div className="flex min-h-screen bg-background">
       {/* ── Left hero panel (desktop only) ── */}
       <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] relative flex-col justify-between overflow-hidden">
         {/* Background image overlay */}
@@ -465,7 +495,7 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right form panel ── */}
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 lg:bg-[#131920]">
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 lg:bg-card">
         {/* Mobile brand header */}
         <div className="lg:hidden mb-8 flex flex-col items-center gap-3">
           <div className="flex size-14 items-center justify-center rounded-2xl bg-primary">
@@ -484,7 +514,7 @@ export default function LoginPage() {
               <path d="M2 12l10 5 10-5" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
             Faith<span className="text-primary">Connect</span>
           </h1>
         </div>
@@ -492,7 +522,7 @@ export default function LoginPage() {
         <div className="w-full max-w-[360px] space-y-6">
           {/* Header */}
           <div>
-            <h2 className="text-xl font-bold text-white">
+            <h2 className="text-xl font-bold text-foreground">
               {mode === "login" && "Welcome Back"}
               {mode === "signup" && "Create Account"}
               {mode === "verify-otp" && "Verify OTP"}
@@ -501,7 +531,7 @@ export default function LoginPage() {
               {mode === "change-password" && "Change Password"}
               {mode === "add-phone" && "Add Phone Number"}
             </h2>
-            <p className="mt-1 text-sm text-white/50">
+            <p className="mt-1 text-sm text-muted-foreground">
               {mode === "login" && "Sign in to your FaithConnect account"}
               {mode === "signup" && "Join the FaithConnect community today"}
               {mode === "verify-otp" && "Enter the 6-digit code sent to your phone"}
@@ -531,7 +561,7 @@ export default function LoginPage() {
             {mode === "login" && (
               <form onSubmit={handleLoginSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Email or Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">Email or Phone Number</label>
                   <input
                     type="text"
                     placeholder="user@example.com or +251912345678"
@@ -546,7 +576,7 @@ export default function LoginPage() {
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-white/70">Password</label>
+                    <label className="text-xs font-medium text-muted-foreground">Password</label>
                     <button
                       type="button"
                       onClick={() => handleModeChange("forgot-password")}
@@ -555,12 +585,9 @@ export default function LoginPage() {
                       Forgot password?
                     </button>
                   </div>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
+                  <PasswordInput
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={inputCls}
                   />
                   {validationErrors.password && (
                     <p className="text-[11px] text-red-400">{validationErrors.password}</p>
@@ -577,7 +604,7 @@ export default function LoginPage() {
             {mode === "signup" && (
               <form onSubmit={handleRegisterSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Full Name</label>
+                  <label className="text-xs font-medium text-muted-foreground">Full Name</label>
                   <input
                     type="text"
                     placeholder="John Doe"
@@ -591,7 +618,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Email Address</label>
+                  <label className="text-xs font-medium text-muted-foreground">Email Address</label>
                   <input
                     type="email"
                     placeholder="john@example.com"
@@ -605,7 +632,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
                   <input
                     type="text"
                     placeholder="+251912345678"
@@ -619,13 +646,10 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Password</label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
+                  <label className="text-xs font-medium text-muted-foreground">Password</label>
+                  <PasswordInput
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={inputCls}
                   />
                   {validationErrors.password && (
                     <p className="text-[11px] text-red-400">{validationErrors.password}</p>
@@ -642,7 +666,7 @@ export default function LoginPage() {
             {mode === "verify-otp" && (
               <form onSubmit={handleVerifyOtpSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
                   <input
                     type="text"
                     placeholder="+251912345678"
@@ -656,7 +680,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">6-Digit OTP</label>
+                  <label className="text-xs font-medium text-muted-foreground">6-Digit OTP</label>
                   <input
                     type="text"
                     placeholder="123456"
@@ -676,7 +700,7 @@ export default function LoginPage() {
                     variant="outline"
                     onClick={handleResendOtp}
                     disabled={isLoading}
-                    className="h-11 flex-1 rounded-xl text-white/80 border-white/10 hover:bg-white/5"
+                    className="h-11 flex-1 rounded-xl text-foreground border-border hover:bg-accent"
                   >
                     Resend OTP
                   </Button>
@@ -691,7 +715,7 @@ export default function LoginPage() {
             {mode === "forgot-password" && (
               <form onSubmit={handleForgotPasswordSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
                   <input
                     type="text"
                     placeholder="+251912345678"
@@ -714,7 +738,7 @@ export default function LoginPage() {
             {mode === "reset-password" && (
               <form onSubmit={handleResetPasswordSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
                   <input
                     type="text"
                     placeholder="+251912345678"
@@ -728,7 +752,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">6-Digit OTP</label>
+                  <label className="text-xs font-medium text-muted-foreground">6-Digit OTP</label>
                   <input
                     type="text"
                     placeholder="123456"
@@ -743,13 +767,10 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">New Password</label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
+                  <label className="text-xs font-medium text-muted-foreground">New Password</label>
+                  <PasswordInput
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className={inputCls}
                   />
                   {validationErrors.newPassword && (
                     <p className="text-[11px] text-red-400">{validationErrors.newPassword}</p>
@@ -757,13 +778,10 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Confirm New Password</label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
+                  <label className="text-xs font-medium text-muted-foreground">Confirm New Password</label>
+                  <PasswordInput
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={inputCls}
                   />
                   {validationErrors.confirmPassword && (
                     <p className="text-[11px] text-red-400">{validationErrors.confirmPassword}</p>
@@ -780,13 +798,10 @@ export default function LoginPage() {
             {mode === "change-password" && (
               <form onSubmit={handleChangePasswordSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Old Password</label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
+                  <label className="text-xs font-medium text-muted-foreground">Old Password</label>
+                  <PasswordInput
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
-                    className={inputCls}
                   />
                   {validationErrors.oldPassword && (
                     <p className="text-[11px] text-red-400">{validationErrors.oldPassword}</p>
@@ -794,13 +809,10 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">New Password</label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
+                  <label className="text-xs font-medium text-muted-foreground">New Password</label>
+                  <PasswordInput
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className={inputCls}
                   />
                   {validationErrors.newPassword && (
                     <p className="text-[11px] text-red-400">{validationErrors.newPassword}</p>
@@ -808,13 +820,10 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Confirm New Password</label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
+                  <label className="text-xs font-medium text-muted-foreground">Confirm New Password</label>
+                  <PasswordInput
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={inputCls}
                   />
                   {validationErrors.confirmPassword && (
                     <p className="text-[11px] text-red-400">{validationErrors.confirmPassword}</p>
@@ -831,7 +840,7 @@ export default function LoginPage() {
             {mode === "add-phone" && (
               <form onSubmit={handleAddPhoneSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/70">Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
                   <input
                     type="text"
                     placeholder="+251912345678"
@@ -855,9 +864,9 @@ export default function LoginPage() {
           {mode === "login" && (
             <>
               <div className="relative flex items-center gap-3">
-                <div className="flex-1 h-px bg-white/10" />
-                <span className="text-[11px] text-white/40">OR SIGN IN WITH</span>
-                <div className="flex-1 h-px bg-white/10" />
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[11px] text-muted-foreground">OR SIGN IN WITH</span>
+                <div className="flex-1 h-px bg-border" />
               </div>
 
               <div className="w-full">
@@ -893,7 +902,7 @@ export default function LoginPage() {
           )}
 
           {/* Mode toggles */}
-          <div className="flex flex-col gap-2 text-center text-xs text-white/50">
+          <div className="flex flex-col gap-2 text-center text-xs text-muted-foreground">
             {mode === "login" && (
               <>
                 <p>
@@ -906,7 +915,7 @@ export default function LoginPage() {
                     Request Access
                   </button>
                 </p>
-                <p className="text-[11px] text-white/30">
+                <p className="text-[11px] text-muted-foreground/50">
                   Need to change password?{" "}
                   <button
                     type="button"
@@ -943,10 +952,10 @@ export default function LoginPage() {
             )}
           </div>
 
-          <div className="flex justify-center gap-4 text-[10px] text-white/30 pt-2">
-            <button className="hover:text-white/60">Privacy</button>
-            <button className="hover:text-white/60">Terms</button>
-            <button className="hover:text-white/60">Contact Support</button>
+          <div className="flex justify-center gap-4 text-[10px] text-muted-foreground/50 pt-2">
+            <button className="hover:text-foreground/60">Privacy</button>
+            <button className="hover:text-foreground/60">Terms</button>
+            <button className="hover:text-foreground/60">Contact Support</button>
           </div>
         </div>
       </div>

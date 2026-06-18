@@ -39,7 +39,7 @@ const desktopNavItems = [
     {
         title: "Church",
         items: [
-            { href: "/account", label: "Church Hub", Icon: Church, ActiveIcon: Church },
+            { href: "/account", label: "Profile", Icon: Church, ActiveIcon: Church },
             { href: "/account/create-post", label: "Content Studio", Icon: PenSquare, ActiveIcon: PenSquare, ownerOnly: true },
             { href: "/account/settings", label: "Settings", Icon: Gear, ActiveIcon: Gear },
         ],
