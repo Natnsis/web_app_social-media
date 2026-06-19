@@ -1,5 +1,18 @@
 import type { NextConfig } from "next"
 
-const nextConfig: NextConfig = {}
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "assets.novastream.et",
+      },
+      {
+        protocol: "https",
+        hostname: "api.minio.churchs.pitrontech.et",
+      },
+    ],
+  },
+}
 
 export default nextConfig

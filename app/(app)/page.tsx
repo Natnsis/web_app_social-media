@@ -1,26 +1,26 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuthStore } from "@/lib/store/auth"
-import { GridCircle, Bell, DotsHorizontal } from "nasicon-react/solid"
+import { PostCard } from "@/components/post-card"
+import { usePosts, useToggleLike, useToggleSave } from "@/hooks/use-posts"
+import { GridCircle, Bell, CirclePlus } from "nasicon-react/solid"
 import {
-    Heart, MessageSquare, Bookmark, CornerUpRight, CirclePlus, Eye,
-    HouseChimneyBlank, User, Gift, Users, Globe, ChevronRight,
-    Xmark, ArrowRightFromBracket, Church,
+    Heart, HouseChimneyBlank, User, Gift, Users, Globe, ChevronRight,
+    Xmark, ArrowRightFromBracket, Church, CornerUpRight,
     TowerBroadcast, Video, PenSquare, CalendarAlt, LocationPin,
 } from "nasicon-react/outline"
 import {
-    BarChart3, CalendarPlus, Clapperboard, FileText, MessageCircleWarning,
-    PlayCircle, Radio, Sparkles,
+    BarChart3, CalendarPlus, Clapperboard, FileText, MessageCircleWarning, Radio,
 } from "lucide-react"
+import type { Post } from "@/types"
 
 const liveUsers = [
     { name: "Grace Ch...", initials: "GC", id: "grace-ch" },
@@ -29,31 +29,6 @@ const liveUsers = [
     { name: "The Well", initials: "TW", id: "the-well" },
     { name: "New Life", initials: "NL", id: "new-life" },
     { name: "Zion", initials: "ZN", id: "zion" },
-]
-
-const posts = [
-    {
-        id: 1, author: "Grace Community", initials: "GC", time: "2 hours ago",
-        text: "What a beautiful Sunday service! The choir\u2019s rendition of \u201cAmazing Grace\u201d brought tears to my eyes. Grateful for this community. \uD83D\uDE4F\u2728",
-        hashtags: ["#FaithWalk", "#Community"],
-        likes: "1.2k", comments: "48", views: "3.4k",
-        tone: "from-primary/25 to-primary/5",
-    },
-    {
-        id: 2, author: "Grace Community", initials: "GC", time: "2 hours ago",
-        text: "Recording a worship cover tonight with the team. Guitar, vocals, and lots of prayer. Can\u2019t wait to share! \uD83C\uDFB8\uD83D\uDE4C\uD83D\uDE4C",
-        hashtags: ["#Worship", "#BezaTeam"],
-        likes: "856", comments: "12", views: "2k",
-        hasVideo: true,
-        tone: "from-primary/30 to-muted",
-    },
-    {
-        id: 3, author: "Pastor Marcus", initials: "PM", time: "3 hours ago",
-        text: "May your week be filled with the goodness of the Holy Spirit. Remember that no challenge is too great when we walk in faith. Let us continue to support one another in prayer and fellowship.",
-        hashtags: ["#Faith", "#Prayer"],
-        likes: "2.1k", comments: "84", views: "6.2k",
-        tone: "from-primary/20 to-background",
-    },
 ]
 
 const ownerActions = [
@@ -73,7 +48,7 @@ const desktopTrends = [
 
 const fabItems = [
     { label: "Create Group", Icon: Users, href: "/chats/new-group" },
-    { label: "Create Campaign", Icon: TowerBroadcast, href: "/" },
+    { label: "Create Campaign", Icon: TowerBroadcast, href: "/campaigns" },
     { label: "Start Live", Icon: Video, href: "/" },
     { label: "Create Post", Icon: PenSquare, href: "/account/create-post" },
 ]
@@ -90,7 +65,7 @@ const nearbyChurches = [
 
 type MenuSection = {
     title: string
-    items: { label: string; icon: React.ReactNode; active?: boolean; extra?: string }[]
+    items: { label: string; icon: React.ReactNode; active?: boolean; extra?: string; href?: string }[]
 }
 
 function SideDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -109,7 +84,7 @@ function SideDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
             title: "COMMUNITY",
             items: [
                 { label: "Groups", icon: <Users size={18} /> },
-                { label: "Campaign", icon: <Church size={18} /> },
+                { label: "Campaigns", icon: <Heart size={18} />, href: "/campaigns" },
                 { label: "Gift", icon: <Gift size={18} /> },
             ],
         },
@@ -146,6 +121,7 @@ function SideDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
                             <p className="mb-1 px-1 text-[10px] font-bold tracking-widest text-muted-foreground">{section.title}</p>
                             {section.items.map((item) => (
                                 <button key={item.label}
+                                    onClick={() => { if (item.href) router.push(item.href); onClose() }}
                                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${item.active ? "bg-primary/10 font-semibold text-primary" : "hover:bg-muted"}`}>
                                     <span className={item.active ? "text-primary" : "text-muted-foreground"}>{item.icon}</span>
                                     <span className="flex-1 text-left">{item.label}</span>
@@ -170,6 +146,36 @@ function SideDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 /* ── Shared feed content (used on both mobile and desktop) ── */
 function FeedContent() {
+    const { data, isLoading, isError, refetch } = usePosts()
+    const toggleLike = useToggleLike()
+    const toggleSave = useToggleSave()
+    const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
+    const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set())
+
+    const handleLike = useCallback((id: string) => {
+        const liked = likedPosts.has(id)
+        setLikedPosts((prev) => {
+            const next = new Set(prev)
+            if (liked) next.delete(id)
+            else next.add(id)
+            return next
+        })
+        toggleLike.mutate({ id, liked })
+    }, [likedPosts, toggleLike])
+
+    const handleSave = useCallback((id: string) => {
+        const saved = savedPosts.has(id)
+        setSavedPosts((prev) => {
+            const next = new Set(prev)
+            if (saved) next.delete(id)
+            else next.add(id)
+            return next
+        })
+        toggleSave.mutate({ id, saved })
+    }, [savedPosts, toggleSave])
+
+    const posts = data?.data ?? []
+
     return (
         <div className="space-y-4">
             {/* Daily Verse */}
@@ -212,42 +218,57 @@ function FeedContent() {
 
             {/* Posts */}
             <div className="space-y-4">
-                {posts.map((post) => (
-                    <div key={post.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                                <Avatar>
-                                    <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">{post.initials}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <p className="text-sm font-semibold">{post.author}</p>
-                                    <p className="text-xs text-muted-foreground">{post.time}</p>
+                {isLoading && (
+                    <>
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="rounded-2xl border border-border bg-card p-4 animate-pulse">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-11 rounded-full bg-muted" />
+                                    <div className="space-y-2 flex-1">
+                                        <div className="h-4 w-40 rounded bg-muted" />
+                                        <div className="h-3 w-20 rounded bg-muted" />
+                                    </div>
+                                </div>
+                                <div className="mt-4 space-y-2">
+                                    <div className="h-3 w-full rounded bg-muted" />
+                                    <div className="h-3 w-3/4 rounded bg-muted" />
+                                </div>
+                                <div className="mt-3 h-44 rounded-xl bg-muted" />
+                                <div className="mt-3 flex gap-5">
+                                    <div className="h-4 w-12 rounded bg-muted" />
+                                    <div className="h-4 w-12 rounded bg-muted" />
+                                    <div className="h-4 w-12 rounded bg-muted" />
                                 </div>
                             </div>
-                            <Button variant="ghost" size="icon-sm"><DotsHorizontal size={20} /></Button>
-                        </div>
-                        <p className="mt-2 text-sm leading-relaxed">{post.text}</p>
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                            {post.hashtags.map((tag) => (
-                                <Badge key={tag} variant="outline" className="rounded-full text-primary border-primary/30 text-[11px]">{tag}</Badge>
-                            ))}
-                        </div>
-                        {post.hasVideo
-                            ? <div className="mt-3 h-48 rounded-xl bg-gray-300 dark:bg-gray-700 flex items-center justify-center"><div className="flex size-14 items-center justify-center rounded-full bg-primary/80"><span className="text-white text-2xl">▶</span></div></div>
-                            : <div className="mt-3 h-44 rounded-xl bg-gray-200 dark:bg-gray-700" />
-                        }
-                        <div className="mt-3 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-red-500 transition-colors"><Heart size={17} /><span>{post.likes}</span></button>
-                                <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"><MessageSquare size={17} /><span>{post.comments}</span></button>
-                                <button className="flex items-center gap-1 text-sm text-muted-foreground"><Eye size={17} /><span>{post.views}</span></button>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <button className="text-muted-foreground hover:text-primary transition-colors"><Bookmark size={17} /></button>
-                                <button className="text-muted-foreground hover:text-primary transition-colors"><CornerUpRight size={17} /></button>
-                            </div>
-                        </div>
+                        ))}
+                    </>
+                )}
+
+                {isError && (
+                    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
+                        <p className="text-sm text-muted-foreground">Failed to load posts</p>
+                        <Button variant="outline" size="sm" onClick={() => refetch()}>Try again</Button>
                     </div>
+                )}
+
+                {!isLoading && !isError && posts.length === 0 && (
+                    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
+                        <p className="text-sm text-muted-foreground">No posts yet</p>
+                        <Link href="/account/create-post">
+                            <Button variant="outline" size="sm">Create the first post</Button>
+                        </Link>
+                    </div>
+                )}
+
+                {!isLoading && !isError && posts.map((post: Post) => (
+                    <PostCard
+                        key={post.id}
+                        post={post}
+                        isLiked={likedPosts.has(post.id)}
+                        isSaved={savedPosts.has(post.id)}
+                        onLike={handleLike}
+                        onSave={handleSave}
+                    />
                 ))}
             </div>
         </div>
@@ -280,11 +301,7 @@ function DesktopStoryRail() {
 function DesktopComposer({ isOwner }: { isOwner: boolean }) {
     return (
         <div className="rounded-2xl border border-border bg-card p-4">
-            <p className="mb-3 text-sm font-bold">Post something meaningful</p>
             <div className="flex items-center gap-3">
-                <Avatar>
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">AT</AvatarFallback>
-                </Avatar>
                 <div className="flex h-11 flex-1 items-center rounded-xl border border-border bg-muted/40 px-4 text-sm text-muted-foreground">
                     Share a testimony, question, update, or prayer request
                 </div>
@@ -298,13 +315,15 @@ function DesktopComposer({ isOwner }: { isOwner: boolean }) {
                         <Link
                             key={label}
                             href={href}
-                            className="group rounded-xl border border-border bg-background p-2 transition-colors hover:border-primary/40 hover:bg-primary/5"
+                            className="group flex items-center gap-2 rounded-xl border border-border bg-background p-2 transition-colors hover:border-primary/40 hover:bg-primary/5"
                         >
-                            <div className="mb-2 flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                                 <Icon size={15} />
                             </div>
-                            <p className="truncate text-[11px] font-bold">{label}</p>
-                            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{metric}</p>
+                            <div className="min-w-0">
+                                <p className="truncate text-[11px] font-bold leading-tight">{label}</p>
+                                <p className="truncate text-[10px] text-muted-foreground leading-tight">{metric}</p>
+                            </div>
                         </Link>
                     ))}
                 </div>
@@ -313,68 +332,36 @@ function DesktopComposer({ isOwner }: { isOwner: boolean }) {
     )
 }
 
-function DesktopPostCard({ post, featured = false }: { post: (typeof posts)[number]; featured?: boolean }) {
-    return (
-        <article className="overflow-hidden rounded-2xl border border-border bg-card">
-            <div className="p-4 sm:p-5">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <Avatar className="size-11">
-                            <AvatarFallback className="bg-primary/15 text-primary text-sm font-bold">{post.initials}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <p className="font-bold leading-tight">{post.author}</p>
-                            <p className="text-xs text-muted-foreground">{post.time}</p>
-                        </div>
-                    </div>
-                    <Button variant="ghost" size="icon-sm" className="rounded-lg"><DotsHorizontal size={20} /></Button>
-                </div>
-                <p className="mt-4 text-[15px] leading-relaxed">{post.text}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                    {post.hashtags.map((tag) => (
-                        <span key={tag} className="text-sm font-semibold text-primary">{tag}</span>
-                    ))}
-                </div>
-            </div>
-
-            <div className="px-4 sm:px-5">
-                {featured ? (
-                    <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted">
-                        <Image src="/background.jpg" alt="Church community gathering" fill className="object-cover" sizes="(min-width: 1024px) 680px, 100vw" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
-                        <div className="absolute bottom-4 left-4 rounded-lg bg-background/90 px-3 py-1 text-xs font-bold backdrop-blur">Community highlight</div>
-                    </div>
-                ) : (
-                    <div className={`relative aspect-[16/9] overflow-hidden rounded-xl bg-gradient-to-br ${post.tone}`}>
-                        <div className="absolute bottom-6 right-6 flex size-14 items-center justify-center rounded-xl bg-background/85 backdrop-blur">
-                            {post.hasVideo ? <PlayCircle size={30} className="text-primary" /> : <Sparkles size={28} className="text-primary" />}
-                        </div>
-                        <div className="absolute inset-x-6 bottom-6 rounded-xl bg-background/85 p-4 backdrop-blur-sm">
-                            <p className="text-sm font-bold">{post.hasVideo ? "Worship cover preview" : "Ministry moment"}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">Tap into the conversation from this week.</p>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <div className="flex items-center justify-between px-5 py-4">
-                <div className="flex items-center gap-5">
-                    <button className="flex items-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-red-500"><Heart size={19} /><span>{post.likes}</span></button>
-                    <button className="flex items-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"><MessageSquare size={19} /><span>{post.comments}</span></button>
-                    <button className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Eye size={19} /><span>{post.views}</span></button>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon-sm" className="rounded-lg"><Bookmark size={18} /></Button>
-                    <Button variant="ghost" size="icon-sm" className="rounded-lg"><CornerUpRight size={18} /></Button>
-                </div>
-            </div>
-        </article>
-    )
-}
-
 function DesktopFeedExperience({ isOwner }: { isOwner: boolean }) {
     const composerRef = useRef<HTMLDivElement>(null)
     const [composerHeight, setComposerHeight] = useState(0)
+    const { data, isLoading, isError, refetch } = usePosts()
+    const toggleLike = useToggleLike()
+    const toggleSave = useToggleSave()
+    const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
+    const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set())
+
+    const handleLike = useCallback((id: string) => {
+        const liked = likedPosts.has(id)
+        setLikedPosts((prev) => {
+            const next = new Set(prev)
+            if (liked) next.delete(id)
+            else next.add(id)
+            return next
+        })
+        toggleLike.mutate({ id, liked })
+    }, [likedPosts, toggleLike])
+
+    const handleSave = useCallback((id: string) => {
+        const saved = savedPosts.has(id)
+        setSavedPosts((prev) => {
+            const next = new Set(prev)
+            if (saved) next.delete(id)
+            else next.add(id)
+            return next
+        })
+        toggleSave.mutate({ id, saved })
+    }, [savedPosts, toggleSave])
 
     useEffect(() => {
         if (composerRef.current) {
@@ -382,9 +369,11 @@ function DesktopFeedExperience({ isOwner }: { isOwner: boolean }) {
         }
     }, [isOwner])
 
+    const posts = data?.data ?? []
+
     return (
         <div className="mx-auto grid h-full max-w-[1500px] grid-cols-[minmax(0,1fr)_320px] gap-5 py-4">
-            <section className="min-w-0 overflow-y-auto">
+            <section className="min-w-0 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="space-y-4 px-3 pb-10">
                     <DesktopStoryRail />
                     <div className="sticky top-0 z-10" style={{ height: composerHeight || undefined }}>
@@ -392,8 +381,64 @@ function DesktopFeedExperience({ isOwner }: { isOwner: boolean }) {
                             <DesktopComposer isOwner={isOwner} />
                         </div>
                     </div>
-                    <DesktopPostCard post={posts[0]} featured />
-                    {posts.slice(1).map((post) => <DesktopPostCard key={post.id} post={post} />)}
+
+                    {isLoading && (
+                        <>
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="overflow-hidden rounded-2xl border border-border bg-card p-5 animate-pulse">
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-11 rounded-full bg-muted" />
+                                        <div className="space-y-2 flex-1">
+                                            <div className="h-4 w-40 rounded bg-muted" />
+                                            <div className="h-3 w-20 rounded bg-muted" />
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 space-y-2">
+                                        <div className="h-3 w-full rounded bg-muted" />
+                                        <div className="h-3 w-3/4 rounded bg-muted" />
+                                    </div>
+                                    <div className="mt-3 aspect-video rounded-xl bg-muted" />
+                                </div>
+                            ))}
+                        </>
+                    )}
+
+                    {isError && (
+                        <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
+                            <p className="text-sm text-muted-foreground">Failed to load posts</p>
+                            <Button variant="outline" size="sm" onClick={() => refetch()}>Try again</Button>
+                        </div>
+                    )}
+
+                    {!isLoading && !isError && posts.length === 0 && (
+                        <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
+                            <p className="text-sm text-muted-foreground">No posts yet</p>
+                            <Link href="/account/create-post">
+                                <Button variant="outline" size="sm">Create the first post</Button>
+                            </Link>
+                        </div>
+                    )}
+
+                    {posts.length > 0 && (
+                        <PostCard
+                            post={posts[0]}
+                            featured
+                            isLiked={likedPosts.has(posts[0].id)}
+                            isSaved={savedPosts.has(posts[0].id)}
+                            onLike={handleLike}
+                            onSave={handleSave}
+                        />
+                    )}
+                    {posts.slice(1).map((post: Post) => (
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            isLiked={likedPosts.has(post.id)}
+                            isSaved={savedPosts.has(post.id)}
+                            onLike={handleLike}
+                            onSave={handleSave}
+                        />
+                    ))}
                 </div>
             </section>
             <DesktopRightPanel />

@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { Calendar } from "lucide-react"
 import {
     HouseChimneyBlank, Annotation, CirclePlay, User,
     Gear, Bell, Search, Heart, PenSquare, ArrowRightFromBracket,
@@ -18,6 +19,7 @@ import {
     Annotation as AnnotationSolid,
     CirclePlay as CirclePlaySolid,
     User as UserSolid,
+    Heart as HeartSolid,
 } from "nasicon-react/solid"
 
 const mobileNavItems = [
@@ -27,13 +29,33 @@ const mobileNavItems = [
     { href: "/account", label: "Account", Icon: User, ActiveIcon: UserSolid },
 ]
 
-const desktopNavItems = [
+interface NavItem {
+    href: string
+    label: string
+    Icon: any
+    ActiveIcon: any
+    ownerOnly?: boolean
+}
+
+interface NavSection {
+    title: string
+    items: NavItem[]
+}
+
+const desktopNavItems: NavSection[] = [
     {
         title: "Community",
         items: [
             { href: "/", label: "Feed", Icon: HouseChimneyBlank, ActiveIcon: HouseChimneyBlankSolid },
             { href: "/shorts", label: "Shorts", Icon: CirclePlay, ActiveIcon: CirclePlaySolid },
             { href: "/chats", label: "Messages", Icon: Annotation, ActiveIcon: AnnotationSolid },
+        ],
+    },
+    {
+        title: "Outreach",
+        items: [
+            { href: "/campaigns", label: "Campaigns", Icon: Heart, ActiveIcon: HeartSolid },
+            { href: "/events", label: "Events", Icon: Calendar, ActiveIcon: Calendar, ownerOnly: false },
         ],
     },
     {
@@ -107,10 +129,10 @@ function DesktopSidebar({ pathname, collapsed }: { pathname: string; collapsed: 
                         </div>
                         <ChartBar size={20} className="text-primary" />
                     </div>
-                    <Button className={`mt-3 w-full rounded-xl ${collapsed ? "px-0" : "gap-2"}`} size="sm" aria-label="Give Now">
+                    <Link href="/campaigns" className={`mt-3 w-full rounded-xl ${collapsed ? "px-0" : "gap-2"} inline-flex items-center justify-center text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2`} aria-label="Give Now">
                         <Heart size={14} />
                         {!collapsed && "Give Now"}
-                    </Button>
+                    </Link>
                 </div>
             </div>
 

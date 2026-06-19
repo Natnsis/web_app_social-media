@@ -1,40 +1,57 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Separator } from "@/components/ui/separator"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuthStore } from "@/lib/store/auth"
+import { PostCard } from "@/components/post-card"
+import { useSavedPosts, useToggleLike, useToggleSave } from "@/hooks/use-posts"
 import {
-    Gear, ChevronDown, Globe, Heart, Bookmark, Eye,
-    MessageSquare, CornerUpRight, ArrowRightFromBracket,
+    Gear, ChevronDown, Globe, ArrowRightFromBracket,
 } from "nasicon-react/outline"
-import { DotsHorizontal, CirclePlus } from "nasicon-react/solid"
+import { CirclePlus } from "nasicon-react/solid"
+import type { Post } from "@/types"
 
 const filterPills = ["All", "Posts", "Shorts", "Videos"]
-
-const savedPosts = [
-    {
-        id: 1, author: "Beza International", initials: "BI", time: "1 day ago",
-        text: "God is good all the time. Share your blessings this week!",
-        hashtags: ["#Blessings", "#Faith"], likes: "2.4k", comments: "120", views: "8k",
-    },
-    {
-        id: 2, author: "Grace Community", initials: "GC", time: "3 days ago",
-        text: "Our charity drive raised over $50,000 for the local food bank. Thank you all!",
-        hashtags: ["#Community", "#Charity"], likes: "3.1k", comments: "245", views: "15k",
-    },
-]
 
 export default function AccountPage() {
     const router = useRouter()
     const [activeFilter, setActiveFilter] = useState("All")
     const { user, logout } = useAuthStore()
+    const { data, isLoading, isError, refetch } = useSavedPosts()
+    const toggleLike = useToggleLike()
+    const toggleSave = useToggleSave()
+    const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
+    const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set())
+
+    const handleLike = useCallback((id: string) => {
+        const liked = likedPosts.has(id)
+        setLikedPosts((prev) => {
+            const next = new Set(prev)
+            if (liked) next.delete(id)
+            else next.add(id)
+            return next
+        })
+        toggleLike.mutate({ id, liked })
+    }, [likedPosts, toggleLike])
+
+    const handleSave = useCallback((id: string) => {
+        const saved = savedPosts.has(id)
+        setSavedPosts((prev) => {
+            const next = new Set(prev)
+            if (saved) next.delete(id)
+            else next.add(id)
+            return next
+        })
+        toggleSave.mutate({ id, saved })
+    }, [savedPosts, toggleSave])
+
+    const posts = data?.data ?? []
 
     return (
         <div className="relative flex h-full flex-col overflow-hidden">
@@ -127,40 +144,56 @@ export default function AccountPage() {
 
                             {/* Posts */}
                             <div className="px-4 space-y-4">
-                                {savedPosts.map((post) => (
-                                    <div key={post.id} className="rounded-2xl border border-border bg-card p-3 shadow-sm">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2.5">
-                                                <Avatar>
-                                                    <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">{post.initials}</AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <p className="text-sm font-semibold">{post.author}</p>
-                                                    <p className="text-xs text-muted-foreground">{post.time}</p>
+                                {tab === "Saved" && isLoading && (
+                                    <>
+                                        {[1, 2].map((i) => (
+                                            <div key={i} className="rounded-2xl border border-border bg-card p-3 animate-pulse">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="size-10 rounded-full bg-muted" />
+                                                    <div className="space-y-2 flex-1">
+                                                        <div className="h-4 w-36 rounded bg-muted" />
+                                                        <div className="h-3 w-16 rounded bg-muted" />
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 space-y-2">
+                                                    <div className="h-3 w-full rounded bg-muted" />
+                                                    <div className="h-3 w-2/3 rounded bg-muted" />
                                                 </div>
                                             </div>
-                                            <Button variant="ghost" size="icon-sm"><DotsHorizontal size={18} /></Button>
-                                        </div>
-                                        <p className="mt-2 text-sm leading-relaxed">{post.text}</p>
-                                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                                            {post.hashtags.map((tag) => (
-                                                <Badge key={tag} variant="outline" className="rounded-full text-primary border-primary/30 text-[11px]">{tag}</Badge>
-                                            ))}
-                                        </div>
-                                        <div className="mt-3 h-40 rounded-xl bg-gray-200 dark:bg-gray-700" />
-                                        <div className="mt-3 flex items-center justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <button className="flex items-center gap-1 text-sm text-muted-foreground"><Heart size={18} /><span>{post.likes}</span></button>
-                                                <button className="flex items-center gap-1 text-sm text-muted-foreground"><MessageSquare size={18} /><span>{post.comments}</span></button>
-                                                <button className="flex items-center gap-1 text-sm text-muted-foreground"><Eye size={18} /><span>{post.views}</span></button>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <button className="text-muted-foreground"><Bookmark size={18} /></button>
-                                                <button className="text-muted-foreground"><CornerUpRight size={18} /></button>
-                                            </div>
-                                        </div>
+                                        ))}
+                                    </>
+                                )}
+
+                                {tab === "Saved" && isError && (
+                                    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
+                                        <p className="text-sm text-muted-foreground">Failed to load saved posts</p>
+                                        <Button variant="outline" size="sm" onClick={() => refetch()}>Try again</Button>
                                     </div>
+                                )}
+
+                                {tab === "Saved" && !isLoading && !isError && posts.length === 0 && (
+                                    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
+                                        <p className="text-sm font-semibold">No saved posts yet</p>
+                                        <p className="text-xs text-muted-foreground">Posts you save will appear here</p>
+                                    </div>
+                                )}
+
+                                {tab === "Saved" && !isLoading && !isError && posts.map((post: Post) => (
+                                    <PostCard
+                                        key={post.id}
+                                        post={post}
+                                        isLiked={likedPosts.has(post.id)}
+                                        isSaved={savedPosts.has(post.id)}
+                                        onLike={handleLike}
+                                        onSave={handleSave}
+                                    />
                                 ))}
+
+                                {tab !== "Saved" && (
+                                    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
+                                        <p className="text-sm text-muted-foreground">Coming soon</p>
+                                    </div>
+                                )}
                             </div>
                         </TabsContent>
                     ))}

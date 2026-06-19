@@ -1,0 +1,125 @@
+const BASE = process.env.NEXT_PUBLIC_API_URL
+
+async function get<T>(path: string, token: string): Promise<T> {
+  const url = `${BASE}${path}`
+
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    const contentType = res.headers.get("content-type")
+    let data: any = null
+    let responseText = ""
+
+    if (contentType && contentType.includes("application/json")) {
+      data = await res.json()
+    } else {
+      responseText = await res.text()
+    }
+
+    if (!res.ok) {
+      const errorMsg = data?.message || data?.error || responseText || `HTTP error! Status: ${res.status}`
+      throw new Error(errorMsg)
+    }
+
+    return data as T
+  } catch (error: any) {
+    console.error(`[API ERROR] GET ${path}:`, error)
+    throw error
+  }
+}
+
+async function patchFormData<T>(path: string, formData: FormData, token: string): Promise<T> {
+  const url = `${BASE}${path}`
+
+  try {
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+
+    const contentType = res.headers.get("content-type")
+    let data: any = null
+    let responseText = ""
+
+    if (contentType && contentType.includes("application/json")) {
+      data = await res.json()
+    } else {
+      responseText = await res.text()
+    }
+
+    if (!res.ok) {
+      const errorMsg = data?.message || data?.error || responseText || `HTTP error! Status: ${res.status}`
+      throw new Error(errorMsg)
+    }
+
+    return data as T
+  } catch (error: any) {
+    console.error(`[API ERROR] PATCH ${path}:`, error)
+    throw error
+  }
+}
+
+export interface UserProfileRole {
+  role: {
+    id: string
+    name: string
+  }
+}
+
+export interface UserChurch {
+  id: string
+  name: string
+  logoUrl: string
+}
+
+export interface UserProfile {
+  id: string
+  email: string
+  phoneNumber: string | null
+  fullName: string
+  bio: string | null
+  avatarUrl: string | null
+  authProvider: string
+  registrationStatus: string
+  isBanned: boolean
+  isEmailVerified: boolean
+  isPhoneVerified: boolean
+  verifiedAt: string | null
+  lastLoginAt: string | null
+  latitude: number | null
+  longitude: number | null
+  locationSharingEnabled: boolean
+  lastLocationAt: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+  roles: UserProfileRole[]
+  userPermissions: string[]
+  isVerified: boolean
+  church?: UserChurch | null
+  isOnline: boolean
+  lastSeenAt: string | null
+  lastSeenText: string | null
+}
+
+export interface UserProfileResponse {
+  success: boolean
+  data: UserProfile
+  timestamp: string
+}
+
+export function apiGetProfile(token: string) {
+  return get<UserProfileResponse>("/v1/users/me", token)
+}
+
+export function apiUpdateProfile(token: string, formData: FormData) {
+  return patchFormData<UserProfileResponse>("/v1/users/me", formData, token)
+}

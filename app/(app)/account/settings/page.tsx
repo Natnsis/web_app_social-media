@@ -1,14 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { ChevronLeft, ChevronRight, Bank, Heart, BullseyeArrow, Bell, User, Users, Shield, Gear, Globe } from "nasicon-react/outline"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { ChevronLeft, ChevronRight, Camera, Loader2 } from "lucide-react"
+import { Bank, Heart, BullseyeArrow, Bell, User, Users, Shield, Gear, Globe } from "nasicon-react/outline"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { useAuthStore } from "@/lib/store/auth"
+import { useProfile, useUpdateProfile } from "@/hooks/use-profile"
+import { updateProfileSchema } from "@/lib/validation/user"
 
 const stats = [
     {
@@ -54,6 +59,77 @@ export default function AccountSettingsPage() {
     const [notifications, setNotifications] = useState(true)
     const [privateProfile, setPrivateProfile] = useState(false)
     const [twoFactor, setTwoFactor] = useState(false)
+
+    const [fullName, setFullName] = useState("")
+    const [bio, setBio] = useState("")
+    const [email, setEmail] = useState("")
+    const [phoneNumber, setPhoneNumber] = useState("")
+    const [avatarFile, setAvatarFile] = useState<File | null>(null)
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+    const [successMsg, setSuccessMsg] = useState("")
+    const avatarInputRef = useRef<HTMLInputElement>(null)
+
+    const { data: profileData, isLoading: profileLoading } = useProfile()
+    const updateProfileMutation = useUpdateProfile()
+
+    useEffect(() => {
+        if (profileData?.data) {
+            setFullName(profileData.data.fullName || "")
+            setBio(profileData.data.bio || "")
+            setEmail(profileData.data.email || "")
+            setPhoneNumber(profileData.data.phoneNumber || "")
+        }
+    }, [profileData])
+
+    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            setAvatarFile(file)
+            setAvatarPreview(URL.createObjectURL(file))
+        }
+    }
+
+    const handleProfileSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        setFieldErrors({})
+        setSuccessMsg("")
+
+        const validated = updateProfileSchema.safeParse({
+            fullName: fullName.trim(),
+            bio: bio.trim() || undefined,
+            email: email.trim(),
+            phoneNumber: phoneNumber.trim() || undefined,
+        })
+
+        if (!validated.success) {
+            const errors: Record<string, string> = {}
+            validated.error.issues.forEach((issue) => {
+                if (issue.path[0]) errors[issue.path[0].toString()] = issue.message
+            })
+            setFieldErrors(errors)
+            return
+        }
+
+        const formData = new FormData()
+        formData.append("fullName", validated.data.fullName)
+        formData.append("email", validated.data.email)
+        if (validated.data.bio) formData.append("bio", validated.data.bio)
+        if (validated.data.phoneNumber) formData.append("phoneNumber", validated.data.phoneNumber)
+        if (avatarFile) formData.append("avatar", avatarFile)
+
+        updateProfileMutation.mutate(formData, {
+            onSuccess: () => {
+                setSuccessMsg("Profile updated successfully")
+                setAvatarFile(null)
+                setAvatarPreview(null)
+            },
+            onError: (err: any) => {
+                setFieldErrors({ form: err.message || "Failed to update profile" })
+            },
+        })
+    }
+
     const preferenceItems = [
         { label: "Notifications", sub: "Push and email alerts for lives, messages, payouts, and moderation.", Icon: Bell, state: notifications, set: setNotifications },
         { label: "Private Profile", sub: "Only approved followers can see personal posts and saved activity.", Icon: Shield, state: privateProfile, set: setPrivateProfile },
@@ -111,6 +187,77 @@ export default function AccountSettingsPage() {
                     </div>
 
                     <div className="space-y-5 p-5">
+                        <section className="rounded-xl border border-border bg-background">
+                            <div className="border-b border-border px-4 py-3">
+                                <h2 className="text-sm font-black">Edit Profile</h2>
+                                <p className="mt-1 text-xs text-muted-foreground">Update your personal information and photo.</p>
+                            </div>
+                            <form onSubmit={handleProfileSubmit} className="space-y-4 p-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="relative">
+                                        <Avatar className="size-16 cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+                                            {avatarPreview ? (
+                                                <AvatarImage src={avatarPreview} />
+                                            ) : profileData?.data?.avatarUrl ? (
+                                                <AvatarImage src={profileData.data.avatarUrl} />
+                                            ) : (
+                                                <AvatarFallback className="bg-primary/20 text-primary text-base font-bold">
+                                                    {user?.initials ?? "AT"}
+                                                </AvatarFallback>
+                                            )}
+                                        </Avatar>
+                                        <button type="button" onClick={() => avatarInputRef.current?.click()} className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-background">
+                                            <Camera size={12} />
+                                        </button>
+                                        <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        <p className="font-medium">Profile photo</p>
+                                        <p>PNG, JPG up to 5MB</p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-foreground">Full Name</label>
+                                    <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" />
+                                    {fieldErrors.fullName && <p className="mt-1 text-xs text-destructive">{fieldErrors.fullName}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-foreground">Email</label>
+                                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" />
+                                    {fieldErrors.email && <p className="mt-1 text-xs text-destructive">{fieldErrors.email}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-foreground">Phone Number</label>
+                                    <Input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+251912345678" />
+                                    {fieldErrors.phoneNumber && <p className="mt-1 text-xs text-destructive">{fieldErrors.phoneNumber}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-foreground">Bio</label>
+                                    <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell us about yourself..." rows={3} />
+                                    {fieldErrors.bio && <p className="mt-1 text-xs text-destructive">{fieldErrors.bio}</p>}
+                                </div>
+
+                                {fieldErrors.form && (
+                                    <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{fieldErrors.form}</div>
+                                )}
+
+                                {successMsg && (
+                                    <div className="rounded-xl bg-green-50 p-3 text-xs text-green-700 dark:bg-green-950 dark:text-green-400">{successMsg}</div>
+                                )}
+
+                                <Button type="submit" disabled={updateProfileMutation.isPending} className="w-full rounded-xl">
+                                    {updateProfileMutation.isPending ? (
+                                        <><Loader2 size={16} className="animate-spin" /> Saving...</>
+                                    ) : (
+                                        "Save Changes"
+                                    )}
+                                </Button>
+                            </form>
+                        </section>
                         <section>
                             <div className="mb-3 flex items-center justify-between">
                                 <div>
@@ -231,6 +378,78 @@ export default function AccountSettingsPage() {
             </header>
 
             <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-6">
+                {/* Edit Profile */}
+                <section className="rounded-2xl border border-border bg-card p-4">
+                    <h2 className="text-sm font-black">Edit Profile</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">Update your personal information and photo.</p>
+
+                    <form onSubmit={handleProfileSubmit} className="mt-4 space-y-4">
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <Avatar className="size-16 cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+                                    {avatarPreview ? (
+                                        <AvatarImage src={avatarPreview} />
+                                    ) : profileData?.data?.avatarUrl ? (
+                                        <AvatarImage src={profileData.data.avatarUrl} />
+                                    ) : (
+                                        <AvatarFallback className="bg-primary/20 text-primary text-base font-bold">
+                                            {user?.initials ?? "AT"}
+                                        </AvatarFallback>
+                                    )}
+                                </Avatar>
+                                <button type="button" onClick={() => avatarInputRef.current?.click()} className="absolute -bottom-0.5 -right-0.5 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-background">
+                                    <Camera size={12} />
+                                </button>
+                                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                <p className="font-medium">Profile photo</p>
+                                <p>PNG, JPG up to 5MB</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold text-foreground">Full Name</label>
+                            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" />
+                            {fieldErrors.fullName && <p className="mt-1 text-xs text-destructive">{fieldErrors.fullName}</p>}
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold text-foreground">Email</label>
+                            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" />
+                            {fieldErrors.email && <p className="mt-1 text-xs text-destructive">{fieldErrors.email}</p>}
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold text-foreground">Phone Number</label>
+                            <Input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+251912345678" />
+                            {fieldErrors.phoneNumber && <p className="mt-1 text-xs text-destructive">{fieldErrors.phoneNumber}</p>}
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold text-foreground">Bio</label>
+                            <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell us about yourself..." rows={3} />
+                            {fieldErrors.bio && <p className="mt-1 text-xs text-destructive">{fieldErrors.bio}</p>}
+                        </div>
+
+                        {fieldErrors.form && (
+                            <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{fieldErrors.form}</div>
+                        )}
+
+                        {successMsg && (
+                            <div className="rounded-xl bg-green-50 p-3 text-xs text-green-700 dark:bg-green-950 dark:text-green-400">{successMsg}</div>
+                        )}
+
+                        <Button type="submit" disabled={updateProfileMutation.isPending} className="w-full rounded-xl">
+                            {updateProfileMutation.isPending ? (
+                                <><Loader2 size={16} className="animate-spin" /> Saving...</>
+                            ) : (
+                                "Save Changes"
+                            )}
+                        </Button>
+                    </form>
+                </section>
+
                 {/* Stats */}
                 <div className="space-y-3">
                     {stats.map((s) => (

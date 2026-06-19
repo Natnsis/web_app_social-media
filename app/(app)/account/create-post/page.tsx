@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { ImagePlus, Send, Xmark } from "nasicon-react/outline"
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useAuthStore } from "@/lib/store/auth"
+import { useCreatePost } from "@/hooks/use-posts"
 import { PenSquare, Play, CalendarDays, BookOpen } from "nasicon-react/outline"
 import {
     BarChart3, CalendarClock, CheckCircle2, ChevronDown, Clock3, Eye,
@@ -26,9 +28,26 @@ const postTypes = [
 
 export default function CreatePostPage() {
     const { user } = useAuthStore()
+    const router = useRouter()
+    const createPost = useCreatePost()
     const [postType, setPostType] = useState("text")
+    const [title, setTitle] = useState("")
     const [content, setContent] = useState("")
     const [allowComments, setAllowComments] = useState(false)
+
+    const handlePublish = async () => {
+        if (!content.trim()) return
+        try {
+            await createPost.mutateAsync({
+                content: content.trim(),
+                ...(title.trim() ? { title: title.trim() } : {}),
+                allowComments,
+            })
+            router.push("/")
+        } catch (e) {
+            console.error("Publish failed", e)
+        }
+    }
 
     return (
         <div className="flex h-full flex-col overflow-hidden bg-background">
@@ -90,7 +109,9 @@ export default function CreatePostPage() {
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="outline" className="rounded-xl">Save Draft</Button>
-                                <Button className="rounded-xl">Schedule</Button>
+                                <Button className="rounded-xl gap-2" disabled={createPost.isPending} onClick={handlePublish}>
+                                    {createPost.isPending ? "Publishing..." : "Publish"}
+                                </Button>
                             </div>
                         </div>
 
@@ -112,7 +133,7 @@ export default function CreatePostPage() {
                         <div className="mt-6 grid grid-cols-2 gap-4">
                             <label className="space-y-2">
                                 <span className="text-sm font-bold">Title</span>
-                                <input className="h-11 w-full rounded-xl border border-border bg-muted/35 px-4 text-sm outline-none transition focus:border-primary" defaultValue="Sunday worship recap and prayer night" />
+                                <input className="h-11 w-full rounded-xl border border-border bg-muted/35 px-4 text-sm outline-none transition focus:border-primary" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a title (optional)" />
                             </label>
                             <label className="space-y-2">
                                 <span className="text-sm font-bold">Audience</span>
@@ -318,9 +339,9 @@ export default function CreatePostPage() {
             </div>
 
             <div className="shrink-0 border-t border-border bg-background px-4 py-4">
-                <Button className="h-12 w-full rounded-2xl text-base font-semibold gap-2 shadow-sm">
+                <Button className="h-12 w-full rounded-2xl text-base font-semibold gap-2 shadow-sm" disabled={createPost.isPending} onClick={handlePublish}>
                     <Send size={18} />
-                    Publish
+                    {createPost.isPending ? "Publishing..." : "Publish"}
                 </Button>
             </div>
             </div>
