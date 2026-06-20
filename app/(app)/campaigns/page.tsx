@@ -558,7 +558,7 @@ export default function CampaignsPage() {
                     {/* Campaign Grid + Right Panel */}
                     {!isLoading && !isError && campaigns.length > 0 && (
                         <div className="grid grid-cols-1 gap-5 px-4 pb-10 xl:grid-cols-[minmax(0,1fr)_300px]">
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
                                 {campaigns.map((campaign) => (
                                     <CampaignCard key={campaign.id} campaign={campaign} />
                                 ))}
