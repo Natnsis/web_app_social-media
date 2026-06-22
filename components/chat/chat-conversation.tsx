@@ -35,6 +35,14 @@ interface ChatConversationProps {
   otherUserId?: string
   currentUserId?: string
   onDeleteMessage?: (messageId: string) => void
+  onUploadedMessage?: (message: {
+    id: string
+    body: string
+    createdAt: string
+    senderId: string
+    isRead?: boolean
+    mediaUrl?: string | null
+  }) => void
 }
 
 export function ChatConversation({
@@ -55,6 +63,7 @@ export function ChatConversation({
   otherUserId,
   currentUserId,
   onDeleteMessage,
+  onUploadedMessage,
 }: ChatConversationProps) {
   const [showEmoji, setShowEmoji] = useState(false)
   const [inputValue, setInputValue] = useState("")
@@ -76,10 +85,22 @@ export function ChatConversation({
     setUploading(true)
     try {
       const { apiSendMessage, apiSendGroupComment } = await import("@/lib/api/messaging")
+      const body = inputValue.trim() || file.name || "Attachment"
       if (isGroup) {
-        await apiSendGroupComment(conversationId, inputValue, file)
+        const res = await apiSendGroupComment(conversationId, body, file)
+        if (res.data) {
+          onUploadedMessage?.({
+            id: res.data.id,
+            body: res.data.body,
+            createdAt: res.data.createdAt,
+            senderId: res.data.senderId,
+            isRead: false,
+            mediaUrl: res.data.mediaUrl,
+          })
+        }
       } else {
-        await apiSendMessage(conversationId, inputValue, file)
+        const res = await apiSendMessage(conversationId, body, file)
+        if (res.data) onUploadedMessage?.(res.data)
       }
       setInputValue("")
       onTypingStop?.()
@@ -89,7 +110,7 @@ export function ChatConversation({
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
     }
-  }, [conversationId, isGroup, inputValue, onTypingStop, setInputValue])
+  }, [conversationId, isGroup, inputValue, onTypingStop, onUploadedMessage, setInputValue])
 
   const handleSend = useCallback((text: string) => {
     onSend(text)

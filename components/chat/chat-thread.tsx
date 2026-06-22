@@ -89,7 +89,9 @@ export function ChatThread({
 
   const onMessageNew = useCallback(
     (msg: MessageEvent) => {
-      if (msg.conversationId === id) setDmMessages((prev) => [...prev, msg])
+      if (msg.conversationId === id) {
+        setDmMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]))
+      }
     },
     [id],
   )
@@ -126,7 +128,9 @@ export function ChatThread({
 
   const onGroupMessageNew = useCallback(
     (comment: GroupComment) => {
-      if (comment.groupId === id) setGroupMessages((prev) => [...prev, comment])
+      if (comment.groupId === id) {
+        setGroupMessages((prev) => (prev.some((m) => m.id === comment.id) ? prev : [...prev, comment]))
+      }
     },
     [id],
   )
@@ -202,6 +206,70 @@ export function ChatThread({
     [isGroup],
   )
 
+  const handleUploadedMessage = useCallback(
+    (message: {
+      id: string
+      body: string
+      createdAt: string
+      senderId: string
+      isRead?: boolean
+      mediaUrl?: string | null
+    }) => {
+      if (isGroup) {
+        setGroupMessages((prev) => {
+          if (prev.some((m) => m.id === message.id)) return prev
+          return [
+            ...prev,
+            {
+              id: message.id,
+              groupId: id,
+              senderId: message.senderId,
+              parentId: null,
+              body: message.body,
+              mediaUrl: message.mediaUrl ?? null,
+              createdAt: message.createdAt,
+              updatedAt: message.createdAt,
+              deletedAt: null,
+              sender: {
+                id: user?.id ?? message.senderId,
+                fullName: user?.name ?? "You",
+                avatarUrl: null,
+              },
+              _count: { reads: 0 },
+              reads: [],
+            },
+          ]
+        })
+      } else {
+        setDmMessages((prev) => {
+          if (prev.some((m) => m.id === message.id)) return prev
+          return [
+            ...prev,
+            {
+              id: message.id,
+              conversationId: id,
+              senderId: message.senderId,
+              replyToId: null,
+              body: message.body,
+              mediaUrl: message.mediaUrl ?? null,
+              isRead: message.isRead ?? false,
+              readAt: null,
+              createdAt: message.createdAt,
+              deletedAt: null,
+              sender: {
+                id: user?.id ?? message.senderId,
+                fullName: user?.name ?? "You",
+                avatarUrl: null,
+              },
+              replyTo: null,
+            },
+          ]
+        })
+      }
+    },
+    [id, isGroup, user?.id, user?.name],
+  )
+
   const messages = isGroup
     ? groupMessages.map((m) => ({
         id: m.id,
@@ -214,7 +282,7 @@ export function ChatThread({
     : dmMessages
 
   return (
-    <div className="min-w-0 flex-1 overflow-hidden">
+    <div className="h-full min-w-0 flex-1 overflow-hidden">
       <ChatConversation
         messages={messages}
         loading={loading}
@@ -233,6 +301,7 @@ export function ChatThread({
         otherUserId={otherUserId}
         currentUserId={user?.id}
         onDeleteMessage={handleDeleteMessage}
+        onUploadedMessage={handleUploadedMessage}
       />
     </div>
   )
