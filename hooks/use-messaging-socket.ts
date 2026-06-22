@@ -67,7 +67,7 @@ export function useMessagingSocket(enabled: boolean, options: UseMessagingSocket
     }
   }, [enabled])
 
-  const sendMessage = useCallback((payload: { conversationId?: string; recipientId?: string; body: string }) => {
+  const sendMessage = useCallback((payload: { conversationId?: string; recipientId?: string; body: string; mediaUrl?: string }) => {
     socketRef.current?.emit("message:send", payload)
   }, [])
 

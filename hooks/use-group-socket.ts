@@ -82,7 +82,7 @@ export function useGroupSocket(enabled: boolean, options: UseGroupSocketOptions)
     }
   }, [enabled])
 
-  const sendMessage = useCallback((payload: { groupId: string; body: string }) => {
+  const sendMessage = useCallback((payload: { groupId: string; body: string; mediaUrl?: string }) => {
     socketRef.current?.emit("group:message:send", payload)
   }, [])
 

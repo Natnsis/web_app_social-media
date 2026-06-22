@@ -3,17 +3,17 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useAuthStore, isTokenExpired } from "@/lib/store/auth"
-import { useConversations, useConversation } from "@/hooks/use-conversations"
+import { useConversations, useConversation, useUnreadCount } from "@/hooks/use-conversations"
 import { useGroups, useGroupComments } from "@/hooks/use-groups"
 import { useMessagingSocket } from "@/hooks/use-messaging-socket"
 import { useGroupSocket } from "@/hooks/use-group-socket"
 import { getSocket } from "@/lib/socket"
+import { apiDeleteMessage } from "@/lib/api/messaging"
 import { ChatListItem } from "@/components/chat/chat-list-item"
-import { MessageBubble } from "@/components/chat/message-bubble"
-import { ChatInput } from "@/components/chat/chat-input"
+import { ChatConversation } from "@/components/chat/chat-conversation"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { CirclePlus, CircleInformation, Search, Users } from "nasicon-react/outline"
+import { CirclePlus, Search, Users } from "nasicon-react/outline"
 import type { MessageEvent } from "@/types"
 
 type TabType = "direct" | "groups"
@@ -26,14 +26,16 @@ function DesktopConversation({
   onSendMessage,
   onSendGroupMessage,
   onSendRead,
+  currentUserId,
 }: {
   tab: TabType
   conversationId?: string
   groupId?: string
   otherParticipant?: { fullName: string; initials: string; isOnline: boolean; lastSeenText: string | null } | null
-  onSendMessage?: (text: string) => void
-  onSendGroupMessage?: (text: string) => void
+  onSendMessage?: (text: string, mediaUrl?: string) => void
+  onSendGroupMessage?: (text: string, mediaUrl?: string) => void
   onSendRead?: (conversationId: string) => void
+  currentUserId?: string
 }) {
   const { user } = useAuthStore()
 
@@ -118,113 +120,40 @@ function DesktopConversation({
       ? groupCommentsData.data
       : []
 
+  const chatMsgs = tab === "direct" ? dmMessages : groupMessages
+
+  const handleDeleteMessage = useCallback((messageId: string) => {
+    apiDeleteMessage(messageId).catch(() => {})
+    if (tab === "direct") {
+      setDmMessages((prev) => prev.filter((m) => m.id !== messageId))
+    }
+  }, [tab])
+
   return (
-    <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
-      <header className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-4">
-        {tab === "direct" && otherParticipant ? (
-          <>
-            <Avatar>
-              <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
-                {otherParticipant.fullName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold leading-tight">{otherParticipant.fullName}</p>
-              <div className="flex items-center gap-1">
-                <div className={`size-1.5 rounded-full ${otherParticipant.isOnline ? "bg-green-500" : "bg-muted-foreground/30"}`} />
-                <p className="text-[11px] text-muted-foreground">
-                  {otherParticipant.isOnline ? "Active now" : otherParticipant.lastSeenText ?? "Offline"}
-                </p>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <Avatar>
-              <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
-                {tab === "groups" ? "G" : "?"}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold leading-tight">
-                {tab === "groups" ? "Group Chat" : "Direct Message"}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {tab === "groups" ? "Group conversation" : "Select a conversation"}
-              </p>
-            </div>
-          </>
-        )}
-        <button type="button" className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <CircleInformation size={16} />
-        </button>
-      </header>
-
-      <div className="flex-1 space-y-3 overflow-y-auto px-6 py-5">
-        {convLoading && tab === "direct" && (
-          <div className="flex justify-center py-8">
-            <p className="text-sm text-muted-foreground">Loading messages...</p>
-          </div>
-        )}
-
-        {groupCommentsLoading && tab === "groups" && (
-          <div className="flex justify-center py-8">
-            <p className="text-sm text-muted-foreground">Loading messages...</p>
-          </div>
-        )}
-
-        {!convLoading && tab === "direct" && dmMessages.length === 0 && (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-muted-foreground">No messages yet</p>
-          </div>
-        )}
-
-        {tab === "direct" &&
-          dmMessages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              text={msg.body}
-              time={new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              from={msg.senderId === user?.id ? "me" : "them"}
-              isRead={msg.isRead}
-              mediaUrl={msg.mediaUrl}
-            />
-          ))}
-
-        {!groupCommentsLoading && tab === "groups" && groupMessages.length === 0 && (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
-          </div>
-        )}
-
-        {tab === "groups" &&
-          groupMessages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              text={msg.body}
-              time={new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              from={msg.senderId === user?.id ? "me" : "them"}
-              mediaUrl={msg.mediaUrl}
-            />
-          ))}
-
-        {dmTypingUserId && tab === "direct" && (
-          <div className="flex items-start">
-            <div className="rounded-2xl rounded-bl-sm bg-muted px-3.5 py-2.5 text-sm text-muted-foreground">
-              <span className="animate-pulse">typing...</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <ChatInput
-        onSend={(text) => {
-          if (tab === "direct") onSendMessage?.(text)
-          else onSendGroupMessage?.(text)
-        }}
-        placeholder={tab === "groups" ? "Type a group message..." : "Type a message..."}
-      />
-    </section>
+    <ChatConversation
+      messages={chatMsgs}
+      loading={tab === "direct" ? convLoading : groupCommentsLoading}
+      error={false}
+      onSend={(text, mediaUrl) => {
+        if (tab === "direct") onSendMessage?.(text, mediaUrl)
+        else onSendGroupMessage?.(text, mediaUrl)
+      }}
+      typingUserId={tab === "direct" ? dmTypingUserId : null}
+      headerName={tab === "direct" ? otherParticipant?.fullName : undefined}
+      headerInitials={tab === "direct" ? otherParticipant?.initials : tab === "groups" ? "G" : undefined}
+      headerOnline={otherParticipant?.isOnline}
+      headerStatusText={
+        tab === "direct"
+          ? otherParticipant?.isOnline
+            ? "Active now"
+            : otherParticipant?.lastSeenText ?? "Offline"
+          : "Group"
+      }
+      isGroup={tab === "groups"}
+      conversationId={conversationId}
+      currentUserId={user?.id}
+      onDeleteMessage={handleDeleteMessage}
+    />
   )
 }
 
@@ -237,6 +166,8 @@ export default function ChatsPage() {
 
   const { data: convData, isLoading: convsLoading, isError: convsError } = useConversations()
   const { data: groupsData, isLoading: groupsLoading, isError: groupsError } = useGroups()
+  const { data: unreadData } = useUnreadCount()
+  const unreadCount = unreadData?.data?.count ?? 0
   const { data: groupCommentsData, isLoading: groupCommentsLoading } = useGroupComments(
     tab === "groups" ? selectedGroupId : null
   )
@@ -275,6 +206,10 @@ export default function ChatsPage() {
     ? (enrichedConversations.find((c) => c.id === selectedChatId) ?? enrichedConversations[0])
     : null
 
+  const selectedGroup = groups.length > 0
+    ? (groups.find((g) => g.id === selectedGroupId) ?? null)
+    : null
+
   const { isAuthenticated } = useAuthStore()
 
   const onPresenceOnline = useCallback(({ userId }: { userId: string }) => {
@@ -295,24 +230,24 @@ export default function ChatsPage() {
   })
 
   const handleSendDm = useCallback(
-    (text: string) => {
-      if (selectedChatId) sendDm({ conversationId: selectedChatId, body: text })
+    (text: string, mediaUrl?: string) => {
+      if (selectedConv?.id) sendDm({ conversationId: selectedConv.id, body: text, mediaUrl })
     },
-    [selectedChatId, sendDm],
+    [selectedConv?.id, sendDm],
   )
 
   // ── Group socket ──
   const { sendMessage: sendGroupMessage } = useGroupSocket(isAuthenticated, {})
 
   const handleSendGroup = useCallback(
-    (text: string) => {
-      if (selectedGroupId) sendGroupMessage({ groupId: selectedGroupId, body: text })
+    (text: string, mediaUrl?: string) => {
+      if (selectedGroup?.id) sendGroupMessage({ groupId: selectedGroup.id, body: text, mediaUrl })
     },
-    [selectedGroupId, sendGroupMessage],
+    [selectedGroup?.id, sendGroupMessage],
   )
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden lg:flex-row lg:overflow-hidden">
       <header className="flex shrink-0 items-center justify-between px-4 py-3 lg:hidden">
         <h1 className="text-xl font-bold">Chat</h1>
         <div className="flex items-center gap-2">
@@ -340,6 +275,7 @@ export default function ChatsPage() {
         ))}
       </div>
 
+      {/* Mobile conversation list */}
       <div className="flex-1 overflow-y-auto pb-20 lg:hidden">
         {tab === "direct" && convsLoading && (
           <div className="flex justify-center py-8"><p className="text-sm text-muted-foreground">Loading conversations...</p></div>
@@ -394,22 +330,30 @@ export default function ChatsPage() {
           ))}
       </div>
 
-      <div className="hidden h-full min-h-0 overflow-hidden rounded-2xl border border-border bg-card lg:flex">
-        <aside className="flex w-[344px] shrink-0 flex-col border-r border-border bg-card xl:w-96">
+      {/* Desktop split-pane — also visible on smaller screens via flex-col */}
+      <div className="hidden h-full min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card lg:flex lg:flex-row">
+        <aside className="flex w-full shrink-0 flex-col border-r border-border bg-card lg:w-72 xl:w-80">
           <div className="border-b border-border px-4 py-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h1 className="text-xl font-black">Messages</h1>
                 <p className="text-xs text-muted-foreground">Direct and ministry group chats</p>
               </div>
-              {user?.role === "Church Owner" && (
-                <Link
-                  href="/chats/new-group"
-                  className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"
-                >
-                  <CirclePlus size={20} />
-                </Link>
-              )}
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                    {unreadCount}
+                  </span>
+                )}
+                {user?.role === "Church Owner" && (
+                  <Link
+                    href="/chats/new-group"
+                    className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"
+                  >
+                    <CirclePlus size={20} />
+                  </Link>
+                )}
+              </div>
             </div>
 
             <div className="mt-4 flex rounded-xl bg-muted p-1">
@@ -516,7 +460,7 @@ export default function ChatsPage() {
             onSendGroupMessage={handleSendGroup}
           />
         ) : (
-          <div className="flex flex-1 items-center justify-center">
+          <div className="hidden flex-1 items-center justify-center lg:flex">
             <p className="text-sm text-muted-foreground">
               {tab === "direct" ? "Select a conversation" : "Select or create a group"}
             </p>

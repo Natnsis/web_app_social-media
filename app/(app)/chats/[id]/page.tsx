@@ -2,16 +2,12 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { useParams, useSearchParams } from "next/navigation"
-import Link from "next/link"
 import { useAuthStore } from "@/lib/store/auth"
-import { apiGetConversation } from "@/lib/api/messaging"
+import { apiGetConversation, apiDeleteMessage } from "@/lib/api/messaging"
 import { apiGetGroupComments } from "@/lib/api/groups"
 import { useMessagingSocket } from "@/hooks/use-messaging-socket"
 import { useGroupSocket } from "@/hooks/use-group-socket"
-import { MessageBubble } from "@/components/chat/message-bubble"
-import { ChatInput } from "@/components/chat/chat-input"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { ChevronLeft, CircleInformation } from "nasicon-react/outline"
+import { ChatConversation } from "@/components/chat/chat-conversation"
 import type { MessageEvent, GroupComment } from "@/types"
 
 export default function ChatConversationPage() {
@@ -30,6 +26,8 @@ export default function ChatConversationPage() {
   const [typingUserId, setTypingUserId] = useState<string | null>(null)
   const [conversationName, setConversationName] = useState("")
   const [conversationInitials, setConversationInitials] = useState("?")
+
+  const [otherUserId, setOtherUserId] = useState<string | undefined>()
 
   // Fetch messages
   useEffect(() => {
@@ -63,6 +61,7 @@ export default function ChatConversationPage() {
           if (other) {
             setConversationName(other.fullName)
             setConversationInitials(other.initials || other.fullName?.charAt(0).toUpperCase() || "?")
+            setOtherUserId(other.id)
           }
           setLoading(false)
         })
@@ -152,11 +151,11 @@ export default function ChatConversationPage() {
   }, [id, tokenValid, isGroup, sendRead])
 
   const handleSend = useCallback(
-    (text: string) => {
+    (text: string, mediaUrl?: string) => {
       if (isGroup) {
-        sendGroupMessage?.({ groupId: id, body: text })
+        sendGroupMessage?.({ groupId: id, body: text, mediaUrl })
       } else {
-        sendMessage({ conversationId: id, body: text })
+        sendMessage({ conversationId: id, body: text, mediaUrl })
       }
     },
     [id, isGroup, sendMessage, sendGroupMessage],
@@ -172,8 +171,17 @@ export default function ChatConversationPage() {
     else stopTyping(id)
   }, [id, isGroup, stopTyping, stopGroupTyping])
 
-  const formatTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  const handleDeleteMessage = useCallback(
+    (messageId: string) => {
+      apiDeleteMessage(messageId).catch(() => {})
+      if (isGroup) {
+        setGroupMessages((prev) => prev.filter((m) => m.id !== messageId))
+      } else {
+        setDmMessages((prev) => prev.filter((m) => m.id !== messageId))
+      }
+    },
+    [isGroup],
+  )
 
   const msgs = isGroup
     ? groupMessages.map((m) => ({
@@ -187,73 +195,24 @@ export default function ChatConversationPage() {
     : dmMessages
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <header className="flex shrink-0 items-center gap-2 border-b border-border px-2 py-2">
-        <Link href={isGroup ? "/chats" : "/chats"} className="p-1 text-foreground">
-          <ChevronLeft size={22} />
-        </Link>
-        <Avatar>
-          <AvatarFallback className="bg-primary/20 text-primary font-semibold text-xs">
-            {conversationInitials}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          <p className="text-sm font-semibold leading-tight">{conversationName || (isGroup ? "Group" : "Conversation")}</p>
-          <div className="flex items-center gap-1">
-            <div className="size-1.5 rounded-full bg-green-500" />
-            <p className="text-[11px] text-muted-foreground">{isGroup ? "Group" : "Active now"}</p>
-          </div>
-        </div>
-        <button type="button" className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <CircleInformation size={16} />
-        </button>
-      </header>
-
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
-        {loading && (
-          <div className="flex justify-center py-8">
-            <p className="text-sm text-muted-foreground">Loading messages...</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex justify-center py-8">
-            <p className="text-sm text-destructive">Failed to load messages</p>
-          </div>
-        )}
-
-        {!loading && !error && msgs.length === 0 && (
-          <div className="flex justify-center py-8">
-            <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
-          </div>
-        )}
-
-        {msgs.map((msg) => (
-          <MessageBubble
-            key={msg.id}
-            text={msg.body}
-            time={formatTime(msg.createdAt)}
-            from={msg.senderId === user?.id ? "me" : "them"}
-            isRead={"isRead" in msg ? (msg as any).isRead : undefined}
-            mediaUrl={"mediaUrl" in msg ? (msg as any).mediaUrl : undefined}
-          />
-        ))}
-
-        {typingUserId && (
-          <div className="flex items-start">
-            <div className="rounded-2xl rounded-bl-sm bg-muted px-3.5 py-2.5 text-sm text-muted-foreground">
-              <span className="animate-pulse">typing...</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <ChatInput
-        onSend={handleSend}
-        onTypingStart={handleTypingStart}
-        onTypingStop={handleTypingStop}
-        placeholder={isGroup ? "Type a group message..." : "Type a message..."}
-      />
-    </div>
+    <ChatConversation
+      messages={msgs}
+      loading={loading}
+      error={error}
+      onSend={handleSend}
+      onTypingStart={handleTypingStart}
+      onTypingStop={handleTypingStop}
+      typingUserId={typingUserId}
+      headerName={conversationName || (isGroup ? "Group" : "Conversation")}
+      headerInitials={conversationInitials}
+      headerOnline
+      headerStatusText={isGroup ? "Group" : undefined}
+      isGroup={isGroup}
+      onBack={() => window.history.back()}
+      conversationId={id}
+      otherUserId={otherUserId}
+      currentUserId={user?.id}
+      onDeleteMessage={handleDeleteMessage}
+    />
   )
 }

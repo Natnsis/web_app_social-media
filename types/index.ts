@@ -250,6 +250,23 @@ export interface UnreadCountResponse {
   data: { count: number }
 }
 
+export interface MediaUploadResponse {
+  success: boolean
+  data: { url: string }
+}
+
+export interface BlockedUser {
+  id: string
+  fullName: string
+  avatarUrl: string | null
+  blockedAt: string
+}
+
+export interface BlocksResponse {
+  success: boolean
+  data: BlockedUser[]
+}
+
 // ── Group Chat Types ──
 
 export interface GroupComment {
