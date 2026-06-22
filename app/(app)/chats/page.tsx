@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuthStore } from "@/lib/store/auth"
 import { useConversations, useUnreadCount } from "@/hooks/use-conversations"
@@ -12,6 +12,22 @@ import { Button } from "@/components/ui/button"
 import { CirclePlus, Search, Users } from "nasicon-react/outline"
 
 type TabType = "direct" | "groups"
+
+function readInitialSelection() {
+  if (typeof window === "undefined") {
+    return { tab: "direct" as TabType, chatId: null as string | null, groupId: null as string | null }
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  const chatId = params.get("chatId")
+  const isGroup = params.get("type") === "group"
+
+  return {
+    tab: isGroup ? ("groups" as TabType) : ("direct" as TabType),
+    chatId: !isGroup ? chatId : null,
+    groupId: isGroup ? chatId : null,
+  }
+}
 
 export default function ChatsPage() {
   const { user } = useAuthStore()
@@ -26,6 +42,13 @@ export default function ChatsPage() {
 
   const conversations = convData?.data ?? []
   const groups = groupsData?.data ?? []
+
+  useEffect(() => {
+    const selection = readInitialSelection()
+    setTab(selection.tab)
+    setSelectedChatId(selection.chatId)
+    setSelectedGroupId(selection.groupId)
+  }, [])
 
   const enrichedConversations = conversations.map((conv) => {
     const otherA = conv?.participantA
