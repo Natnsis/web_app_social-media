@@ -50,6 +50,14 @@ export default function ChatsPage() {
     setSelectedGroupId(selection.groupId)
   }, [])
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia("(min-width: 1024px)").matches) return
+
+    if (tab === "groups" && groups.length > 0 && (!selectedGroupId || !groups.some((group) => group.id === selectedGroupId))) {
+      setSelectedGroupId(groups[0]?.id ?? null)
+    }
+  }, [groups, selectedGroupId, tab])
+
   const enrichedConversations = conversations.map((conv) => {
     const otherA = conv?.participantA
     const otherB = conv?.participantB

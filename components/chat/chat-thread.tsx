@@ -19,6 +19,17 @@ interface ChatThreadProps {
   initialHeaderOnline?: boolean
 }
 
+function normalizeGroupComments(value: unknown): GroupComment[] {
+  if (Array.isArray(value)) return value
+
+  if (value && typeof value === "object" && "data" in value) {
+    const nested = (value as { data?: unknown }).data
+    return Array.isArray(nested) ? nested : []
+  }
+
+  return []
+}
+
 export function ChatThread({
   id,
   isGroup = false,
@@ -54,7 +65,7 @@ export function ChatThread({
     if (isGroup) {
       apiGetGroupComments(id)
         .then((res) => {
-          setGroupMessages(res.data ?? [])
+          setGroupMessages(normalizeGroupComments(res.data))
           setDmMessages([])
           setLoading(false)
         })
@@ -271,7 +282,7 @@ export function ChatThread({
   )
 
   const messages = isGroup
-    ? groupMessages.map((m) => ({
+    ? normalizeGroupComments(groupMessages).map((m) => ({
         id: m.id,
         body: m.body,
         createdAt: m.createdAt,
