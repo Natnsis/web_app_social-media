@@ -22,7 +22,8 @@ function formatDate(dateStr: string) {
   return date.toLocaleDateString()
 }
 
-function getInitials(name: string) {
+function getInitials(name: string | null | undefined) {
+  if (!name) return "U"
   return name
     .split(" ")
     .map((n) => n[0])
@@ -47,13 +48,13 @@ function CommentItem({ comment, onReply, onDelete, isReply }: CommentItemProps) 
       <div className="flex gap-3">
         <Avatar className="size-8 shrink-0">
           <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
-            {getInitials(comment.author.name)}
+            {getInitials(comment.author?.name || comment.author?.initials)}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="rounded-xl bg-muted/50 px-3 py-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-bold">{comment.author.name}</p>
+              <p className="text-sm font-bold">{comment.author?.name || "Unknown"}</p>
               <p className="text-[10px] text-muted-foreground">{formatDate(comment.createdAt)}</p>
             </div>
             <p className="mt-1 text-sm leading-relaxed">{comment.body}</p>

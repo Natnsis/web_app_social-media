@@ -414,3 +414,103 @@ export interface ShortsResponse {
   meta: PostsMeta
   timestamp: string
 }
+
+// ── Events Types ──
+
+export interface EventItem {
+  id: string
+  churchId: string
+  title: string
+  description: string
+  startDate: string
+  endDate: string
+  location: string | null
+  imageUrl: string | null
+  maxAttendees: number | null
+  status: "upcoming" | "ongoing" | "completed" | "cancelled"
+  isPublic: boolean
+  createdAt: string
+  updatedAt: string
+  church: ChurchInfo
+  attendeeCount: number
+  timeAgo: string
+}
+
+export interface EventsResponse {
+  success: boolean
+  data: EventItem[]
+  meta: PostsMeta
+  timestamp: string
+}
+
+// ── Gifts Types ──
+
+export interface GiftItem {
+  id: string
+  name: string
+  description: string | null
+  priceAmount: number
+  priceCurrency: string
+  imageUrl: string | null
+  createdAt: string
+}
+
+export interface GiftFeedItem {
+  id: string
+  giftItem: GiftItem
+  senderUser: {
+    id: string
+    fullName: string
+    avatarUrl: string | null
+  }
+  recipientUserId: string
+  message: string | null
+  createdAt: string
+}
+
+export interface GiftsResponse {
+  success: boolean
+  data: GiftItem[]
+  meta: { total: number }
+}
+
+export interface GiftFeedResponse {
+  success: boolean
+  data: GiftFeedItem[]
+  meta: PostsMeta
+  timestamp: string
+}
+
+// ── Campaign Types ──
+
+export interface CampaignGoal {
+  targetAmount: number
+  currency: string
+  currentAmount: number
+  percentReached: number
+}
+
+export interface Campaign {
+  id: string
+  churchId: string
+  title: string
+  description: string
+  category: string
+  status: "active" | "completed" | "cancelled"
+  goal: CampaignGoal
+  imageUrl: string | null
+  startsAt: string
+  endsAt: string
+  createdAt: string
+  updatedAt: string
+  church: ChurchInfo
+  contributorCount: number
+  timeAgo: string
+}
+
+export interface CampaignsResponse {
+  success: boolean
+  data: Campaign[]
+  meta: PostsMeta
+  timestamp: string
+}

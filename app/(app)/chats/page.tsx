@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
 import { useAuthStore, isTokenExpired } from "@/lib/store/auth"
 import { useConversations } from "@/hooks/use-conversations"
+import { useGroups } from "@/hooks/use-groups"
 import { useMessagingSocket } from "@/hooks/use-messaging-socket"
 import { useGroupSocket } from "@/hooks/use-group-socket"
 import { apiGetGroupComments } from "@/lib/api/groups"
@@ -132,15 +133,18 @@ export default function ChatsPage() {
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
 
   const { data: convData } = useConversations(tokenValid)
+  const { data: groupsData } = useGroups(tokenValid)
+
   const conversations = convData?.data ?? []
+  const groups = groupsData?.data ?? []
 
   const enrichedConversations = conversations.map((conv) => {
     const other = conv.participantA.id === user?.id ? conv.participantB : conv.participantA
     const isOnline = onlineUsers.has(other.id) || other.isOnline
     return {
       id: conv.id,
-      name: other.fullName,
-      initials: other.initials || other.fullName.charAt(0).toUpperCase(),
+      name: other.fullName || "Unknown",
+      initials: other.initials || other.fullName?.charAt(0).toUpperCase() || "U",
       time: conv.lastMessage
         ? new Date(conv.lastMessage.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         : "",
@@ -208,9 +212,8 @@ export default function ChatsPage() {
               setSelectedChatId(null)
               setSelectedGroupId(null)
             }}
-            className={`flex-1 rounded-full py-1.5 text-sm font-semibold capitalize transition-colors ${
-              tab === t ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"
-            }`}
+            className={`flex-1 rounded-full py-1.5 text-sm font-semibold capitalize transition-colors ${tab === t ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"
+              }`}
           >
             {t === "direct" ? "Direct" : "Groups"}
           </button>
@@ -223,11 +226,36 @@ export default function ChatsPage() {
             <ChatListItem key={chat.id} {...chat} href={`/chats/${chat.id}`} />
           ))}
         {tab === "groups" && (
-          <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
-            <Users size={40} className="text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">
-              {user?.role === "Church Owner" ? "Create your first group" : "No groups yet"}
-            </p>
+          <div>
+            {groups.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
+                <Users size={40} className="text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">
+                  {user?.role === "Church Owner" ? "Create your first group" : "No groups yet"}
+                </p>
+              </div>
+            ) : (
+              groups.map((group) => (
+                <ChatListItem
+                  key={group.id}
+                  id={group.id}
+                  name={group.name}
+                  initials={group.name.slice(0, 2).toUpperCase()}
+                  time={
+                    group.lastActivityAt
+                      ? new Date(group.lastActivityAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                      : ""
+                  }
+                  lastMsg={`${group.memberCount} members`}
+                  unread={0}
+                  online={false}
+                  href={`/chats/${group.id}`}
+                />
+              ))
+            )}
           </div>
         )}
       </div>
@@ -259,9 +287,8 @@ export default function ChatsPage() {
                     setSelectedChatId(null)
                     setSelectedGroupId(null)
                   }}
-                  className={`flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-colors ${
-                    tab === t ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={`flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-colors ${tab === t ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
                 >
                   {t === "direct" ? "Direct" : "Groups"}
                 </button>
@@ -294,9 +321,37 @@ export default function ChatsPage() {
                 ))
               ))}
             {tab === "groups" && (
-              <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
-                <Users size={40} className="text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">Select a group or create a new one</p>
+              <div>
+                {groups.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
+                    <Users size={40} className="text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">
+                      {user?.role === "Church Owner" ? "Create your first group" : "No groups yet"}
+                    </p>
+                  </div>
+                ) : (
+                  groups.map((group) => (
+                    <ChatListItem
+                      key={group.id}
+                      id={group.id}
+                      name={group.name}
+                      initials={group.name.slice(0, 2).toUpperCase()}
+                      time={
+                        group.lastActivityAt
+                          ? new Date(group.lastActivityAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                          : ""
+                      }
+                      lastMsg={`${group.memberCount} members`}
+                      unread={0}
+                      online={false}
+                      active={group.id === selectedGroupId}
+                      onSelect={() => setSelectedGroupId(group.id)}
+                    />
+                  ))
+                )}
               </div>
             )}
           </div>
