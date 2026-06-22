@@ -132,24 +132,35 @@ export default function ChatsPage() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
 
-  const { data: convData } = useConversations(tokenValid)
-  const { data: groupsData } = useGroups(tokenValid)
+  const {
+    data: convData,
+    isLoading: convsLoading,
+    isError: convsError,
+  } = useConversations(tokenValid)
+  const {
+    data: groupsData,
+    isLoading: groupsLoading,
+    isError: groupsError,
+  } = useGroups(tokenValid)
 
   const conversations = convData?.data ?? []
   const groups = groupsData?.data ?? []
 
   const enrichedConversations = conversations.map((conv) => {
-    const other = conv.participantA.id === user?.id ? conv.participantB : conv.participantA
-    const isOnline = onlineUsers.has(other.id) || other.isOnline
+    const otherA = conv?.participantA
+    const otherB = conv?.participantB
+    const other = otherA?.id === user?.id ? otherB : otherA
+    const isOnline = other?.id ? (onlineUsers.has(other.id) || other?.isOnline) : false
+    const lastMsg = conv?.messages?.[conv.messages.length - 1]
     return {
-      id: conv.id,
-      name: other.fullName || "Unknown",
-      initials: other.initials || other.fullName?.charAt(0).toUpperCase() || "U",
-      time: conv.lastMessage
-        ? new Date(conv.lastMessage.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      id: conv?.id ?? "",
+      name: other?.fullName || "Unknown",
+      initials: other?.initials || other?.fullName?.charAt(0).toUpperCase() || "U",
+      time: lastMsg?.createdAt
+        ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         : "",
-      lastMsg: conv.lastMessage?.body ?? "Start a conversation",
-      unread: conv.unreadCount,
+      lastMsg: lastMsg?.body ?? "Start a conversation",
+      unread: 0,
       online: isOnline,
     }
   })
@@ -221,43 +232,57 @@ export default function ChatsPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-20 lg:hidden">
+        {tab === "direct" && convsLoading && (
+          <div className="flex justify-center py-8"><p className="text-sm text-muted-foreground">Loading conversations...</p></div>
+        )}
+        {tab === "direct" && convsError && (
+          <div className="flex justify-center py-8"><p className="text-sm text-destructive">Failed to load conversations</p></div>
+        )}
+        {tab === "direct" && !convsLoading && !convsError && enrichedConversations.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
+            <Users size={40} className="text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">No conversations yet</p>
+          </div>
+        )}
         {tab === "direct" &&
           enrichedConversations.map((chat) => (
             <ChatListItem key={chat.id} {...chat} href={`/chats/${chat.id}`} />
           ))}
-        {tab === "groups" && (
-          <div>
-            {groups.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
-                <Users size={40} className="text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">
-                  {user?.role === "Church Owner" ? "Create your first group" : "No groups yet"}
-                </p>
-              </div>
-            ) : (
-              groups.map((group) => (
-                <ChatListItem
-                  key={group.id}
-                  id={group.id}
-                  name={group.name}
-                  initials={group.name.slice(0, 2).toUpperCase()}
-                  time={
-                    group.lastActivityAt
-                      ? new Date(group.lastActivityAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                      : ""
-                  }
-                  lastMsg={`${group.memberCount} members`}
-                  unread={0}
-                  online={false}
-                  href={`/chats/${group.id}`}
-                />
-              ))
-            )}
+        {tab === "groups" && groupsLoading && (
+          <div className="flex justify-center py-8"><p className="text-sm text-muted-foreground">Loading groups...</p></div>
+        )}
+        {tab === "groups" && groupsError && (
+          <div className="flex justify-center py-8"><p className="text-sm text-destructive">Failed to load groups</p></div>
+        )}
+        {tab === "groups" && !groupsLoading && !groupsError && groups.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
+            <Users size={40} className="text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              {user?.role === "Church Owner" ? "Create your first group" : "No groups yet"}
+            </p>
           </div>
         )}
+        {tab === "groups" &&
+          groups.map((group) => (
+            <ChatListItem
+              key={group?.id}
+              id={group?.id ?? ""}
+              name={group?.name ?? "Group"}
+              initials={group?.name?.slice(0, 2).toUpperCase() ?? "G"}
+              time={
+                group?.updatedAt
+                  ? new Date(group.updatedAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                  : ""
+              }
+              lastMsg={`${group?._count?.members ?? 0} members`}
+              unread={0}
+              online={false}
+              href={`/chats/${group?.id}`}
+            />
+          ))}
       </div>
 
       <div className="hidden h-full min-h-0 overflow-hidden rounded-2xl border border-border bg-card lg:flex">
@@ -305,55 +330,62 @@ export default function ChatsPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {tab === "direct" &&
-              (enrichedConversations.length === 0 ? (
-                <div className="flex justify-center py-8 px-4">
-                  <p className="text-sm text-muted-foreground">No conversations yet</p>
-                </div>
-              ) : (
-                enrichedConversations.map((chat) => (
-                  <ChatListItem
-                    key={chat.id}
-                    {...chat}
-                    active={chat.id === selectedChatId}
-                    onSelect={() => setSelectedChatId(chat.id)}
-                  />
-                ))
-              ))}
-            {tab === "groups" && (
-              <div>
-                {groups.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
-                    <Users size={40} className="text-muted-foreground/40" />
-                    <p className="text-sm text-muted-foreground">
-                      {user?.role === "Church Owner" ? "Create your first group" : "No groups yet"}
-                    </p>
-                  </div>
-                ) : (
-                  groups.map((group) => (
-                    <ChatListItem
-                      key={group.id}
-                      id={group.id}
-                      name={group.name}
-                      initials={group.name.slice(0, 2).toUpperCase()}
-                      time={
-                        group.lastActivityAt
-                          ? new Date(group.lastActivityAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                          : ""
-                      }
-                      lastMsg={`${group.memberCount} members`}
-                      unread={0}
-                      online={false}
-                      active={group.id === selectedGroupId}
-                      onSelect={() => setSelectedGroupId(group.id)}
-                    />
-                  ))
-                )}
+            {tab === "direct" && convsLoading && (
+              <div className="flex justify-center py-8"><p className="text-sm text-muted-foreground">Loading conversations...</p></div>
+            )}
+            {tab === "direct" && convsError && (
+              <div className="flex justify-center py-8"><p className="text-sm text-destructive">Failed to load conversations</p></div>
+            )}
+            {tab === "direct" && !convsLoading && !convsError && enrichedConversations.length === 0 && (
+              <div className="flex justify-center py-8 px-4">
+                <p className="text-sm text-muted-foreground">No conversations yet</p>
               </div>
             )}
+            {tab === "direct" &&
+              enrichedConversations.map((chat) => (
+                <ChatListItem
+                  key={chat.id}
+                  {...chat}
+                  active={chat.id === selectedChatId}
+                  onSelect={() => setSelectedChatId(chat.id)}
+                />
+              ))}
+            {tab === "groups" && groupsLoading && (
+              <div className="flex justify-center py-8"><p className="text-sm text-muted-foreground">Loading groups...</p></div>
+            )}
+            {tab === "groups" && groupsError && (
+              <div className="flex justify-center py-8"><p className="text-sm text-destructive">Failed to load groups</p></div>
+            )}
+            {tab === "groups" && !groupsLoading && !groupsError && groups.length === 0 && (
+              <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
+                <Users size={40} className="text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">
+                  {user?.role === "Church Owner" ? "Create your first group" : "No groups yet"}
+                </p>
+              </div>
+            )}
+            {tab === "groups" &&
+              groups.map((group) => (
+                <ChatListItem
+                  key={group?.id}
+                  id={group?.id ?? ""}
+                  name={group?.name ?? "Group"}
+                  initials={group?.name?.slice(0, 2).toUpperCase() ?? "G"}
+                  time={
+                    group?.updatedAt
+                      ? new Date(group.updatedAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                      : ""
+                  }
+                  lastMsg={`${group?._count?.members ?? 0} members`}
+                  unread={0}
+                  online={false}
+                  active={group?.id === selectedGroupId}
+                  onSelect={() => setSelectedGroupId(group?.id)}
+                />
+              ))}
           </div>
         </aside>
 

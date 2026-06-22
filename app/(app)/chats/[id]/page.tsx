@@ -10,7 +10,7 @@ import { MessageBubble } from "@/components/chat/message-bubble"
 import { ChatInput } from "@/components/chat/chat-input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ChevronLeft, CircleInformation } from "nasicon-react/outline"
-import type { MessageEvent } from "@/types"
+import type { MessageEvent, Conversation } from "@/types"
 
 export default function ChatConversationPage() {
   const params = useParams()
@@ -18,6 +18,7 @@ export default function ChatConversationPage() {
   const { user, accessToken } = useAuthStore()
   const tokenValid = !!accessToken
 
+  const [conversation, setConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<MessageEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [typingUserId, setTypingUserId] = useState<string | null>(null)
@@ -27,10 +28,12 @@ export default function ChatConversationPage() {
     setLoading(true)
     apiGetConversation(conversationId)
       .then((res) => {
-        setMessages(res.data ?? [])
+        setConversation(res.data)
+        setMessages(res.data.messages ?? [])
         setLoading(false)
       })
       .catch(() => {
+        setConversation(null)
         setMessages([])
         setLoading(false)
       })
@@ -98,7 +101,11 @@ export default function ChatConversationPage() {
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   }
 
-  const otherParticipant = messages.length > 0 ? messages[0].sender : null
+  const otherParticipant = conversation
+    ? (conversation.participantA.id === user?.id
+        ? conversation.participantB
+        : conversation.participantA)
+    : null
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -114,8 +121,8 @@ export default function ChatConversationPage() {
         <div className="flex-1">
           <p className="text-sm font-semibold leading-tight">{otherParticipant?.fullName ?? "Conversation"}</p>
           <div className="flex items-center gap-1">
-            <div className="size-1.5 rounded-full bg-green-500" />
-            <p className="text-[11px] text-muted-foreground">Active now</p>
+            <div className={`size-1.5 rounded-full ${otherParticipant?.isOnline ? "bg-green-500" : "bg-muted-foreground/30"}`} />
+            <p className="text-[11px] text-muted-foreground">{otherParticipant?.isOnline ? "Active now" : otherParticipant?.lastSeenText ?? "Offline"}</p>
           </div>
         </div>
         <button type="button" className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground">

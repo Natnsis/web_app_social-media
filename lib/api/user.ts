@@ -1,3 +1,5 @@
+import { useAuthStore } from "@/lib/store/auth"
+
 const BASE = process.env.NEXT_PUBLIC_API_URL
 
 async function get<T>(path: string, token: string): Promise<T> {
@@ -116,10 +118,16 @@ export interface UserProfileResponse {
   timestamp: string
 }
 
-export function apiGetProfile(token: string) {
-  return get<UserProfileResponse>("/v1/users/me", token)
+function token() {
+  return useAuthStore.getState().accessToken ?? undefined
 }
 
-export function apiUpdateProfile(token: string, formData: FormData) {
-  return patchFormData<UserProfileResponse>("/v1/users/me", formData, token)
+export function apiGetProfile(passedToken?: string) {
+  const authToken = passedToken || token()
+  return get<UserProfileResponse>("/v1/users/me", authToken || "")
+}
+
+export function apiUpdateProfile(formData: FormData, passedToken?: string) {
+  const authToken = passedToken || token()
+  return patchFormData<UserProfileResponse>("/v1/users/me", formData, authToken || "")
 }

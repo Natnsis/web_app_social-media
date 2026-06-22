@@ -202,10 +202,11 @@ export interface ConvPayload {
 
 export interface Conversation {
   id: string
+  participantAId: string
+  participantBId: string
   participantA: ParticipantInfo
   participantB: ParticipantInfo
-  lastMessage: MessageEvent | null
-  unreadCount: number
+  messages: MessageEvent[]
   createdAt: string
   updatedAt: string
 }
@@ -223,7 +224,14 @@ export interface ParticipantInfo {
 export interface ConversationsResponse {
   success: boolean
   data: Conversation[]
-  meta: { total: number }
+  meta: PostsMeta
+  timestamp: string
+}
+
+export interface ConversationDetailResponse {
+  success: boolean
+  data: Conversation
+  timestamp: string
 }
 
 export interface MessagesResponse {
@@ -312,20 +320,23 @@ export interface CreateGroupResponse {
 
 export interface MinimalGroup {
   id: string
+  churchId: string
   name: string
   description: string | null
-  category: string
+  coverImageUrl: string | null
   isPrivate: boolean
-  coverUrl: string | null
-  memberCount: number
-  lastActivityAt: string | null
+  allowMemberInvites: boolean
   createdAt: string
+  updatedAt: string
+  church: ChurchInfo
+  _count: { members: number; comments: number }
 }
 
 export interface GroupsResponse {
   success: boolean
   data: MinimalGroup[]
-  meta: { total: number }
+  meta: PostsMeta
+  timestamp: string
 }
 
 // ── Notification Types ──

@@ -1,8 +1,8 @@
-import { get, post, del } from "./client"
+import { get } from "./client"
 import { useAuthStore } from "@/lib/store/auth"
 import type {
   ConversationsResponse,
-  MessagesResponse,
+  ConversationDetailResponse,
   UnreadCountResponse,
 } from "@/types"
 
@@ -14,8 +14,8 @@ export function apiGetConversations() {
   return get<ConversationsResponse>("/v1/messaging/conversations", token())
 }
 
-export function apiGetConversation(id: string, skip = 0, take = 50) {
-  return get<MessagesResponse>(`/v1/messaging/conversations/${id}?skip=${skip}&take=${take}`, token())
+export function apiGetConversation(id: string) {
+  return get<ConversationDetailResponse>(`/v1/messaging/conversations/${id}`, token())
 }
 
 export function apiGetUnreadCount() {
