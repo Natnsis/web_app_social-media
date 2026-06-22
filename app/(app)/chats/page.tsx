@@ -46,16 +46,16 @@ function DesktopConversation({
     tab === "direct" ? conversationId ?? null : null,
   )
 
-  const messages = convDetail?.data ?? null
+  const messages = convDetail?.data?.messages ?? null
 
   const prevConvIdRef = useRef<string | null>(null)
 
   // Seed dmMessages from API when conversationId changes (first load only)
   useEffect(() => {
-    if (tab !== "direct" || !conversationId || !messages) return
+    if (tab !== "direct" || !conversationId || !Array.isArray(messages)) return
     if (prevConvIdRef.current !== conversationId) {
       prevConvIdRef.current = conversationId
-      setDmMessages(messages)
+      setDmMessages(Array.isArray(messages) ? messages : [])
       setDmTypingUserId(null)
     }
   }, [conversationId, tab, messages])
@@ -187,6 +187,7 @@ function DesktopConversation({
               time={new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               from={msg.senderId === user?.id ? "me" : "them"}
               isRead={msg.isRead}
+              mediaUrl={msg.mediaUrl}
             />
           ))}
 
@@ -203,6 +204,7 @@ function DesktopConversation({
               text={msg.body}
               time={new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               from={msg.senderId === user?.id ? "me" : "them"}
+              mediaUrl={msg.mediaUrl}
             />
           ))}
 

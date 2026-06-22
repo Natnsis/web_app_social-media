@@ -58,7 +58,8 @@ export default function ChatConversationPage() {
         .then((res) => {
           const msgs = res.data?.messages ?? []
           setDmMessages(msgs)
-          const other = res.data?.participantA?.id === user?.id ? res.data?.participantB : res.data?.participantA
+          const conv = res.data?.conversation
+          const other = conv?.participantA?.id === user?.id ? conv?.participantB : conv?.participantA
           if (other) {
             setConversationName(other.fullName)
             setConversationInitials(other.initials || other.fullName?.charAt(0).toUpperCase() || "?")
@@ -108,11 +109,42 @@ export default function ChatConversationPage() {
   })
 
   // ── Group socket ──
+  const onGroupMessageNew = useCallback(
+    (comment: GroupComment) => {
+      if (comment.groupId === id) setGroupMessages((prev) => [...prev, comment])
+    },
+    [id],
+  )
+  const onGroupMessageUpdated = useCallback((msg: GroupComment) => {
+    setGroupMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)))
+  }, [])
+  const onGroupMessageDeleted = useCallback(({ messageId }: { groupId: string; messageId: string }) => {
+    setGroupMessages((prev) => prev.filter((m) => m.id !== messageId))
+  }, [])
+  const onGroupTypingStart = useCallback(
+    ({ groupId, userId }: { groupId: string; userId: string }) => {
+      if (groupId === id && userId !== user?.id) setTypingUserId(userId)
+    },
+    [id, user?.id],
+  )
+  const onGroupTypingStop = useCallback(
+    ({ groupId }: { groupId: string }) => {
+      if (groupId === id) setTypingUserId(null)
+    },
+    [id],
+  )
+
   const {
     sendMessage: sendGroupMessage,
     startTyping: startGroupTyping,
     stopTyping: stopGroupTyping,
-  } = useGroupSocket(tokenValid && isGroup, {})
+  } = useGroupSocket(tokenValid && isGroup, {
+    onMessageNew: onGroupMessageNew,
+    onMessageUpdated: onGroupMessageUpdated,
+    onMessageDeleted: onGroupMessageDeleted,
+    onTypingStart: onGroupTypingStart,
+    onTypingStop: onGroupTypingStop,
+  })
 
   // Mark as read on mount
   useEffect(() => {
@@ -150,6 +182,7 @@ export default function ChatConversationPage() {
         createdAt: m.createdAt,
         senderId: m.senderId,
         isRead: false,
+        mediaUrl: m.mediaUrl,
       }))
     : dmMessages
 
@@ -202,6 +235,7 @@ export default function ChatConversationPage() {
             time={formatTime(msg.createdAt)}
             from={msg.senderId === user?.id ? "me" : "them"}
             isRead={"isRead" in msg ? (msg as any).isRead : undefined}
+            mediaUrl={"mediaUrl" in msg ? (msg as any).mediaUrl : undefined}
           />
         ))}
 

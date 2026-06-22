@@ -153,7 +153,9 @@ export interface MessageEvent {
   body: string
   mediaUrl: string | null
   isRead: boolean
+  readAt: string | null
   createdAt: string
+  deletedAt: string | null
   sender: MessageSender
   replyTo: MessageReplyTo | null
 }
@@ -228,9 +230,12 @@ export interface ConversationsResponse {
   timestamp: string
 }
 
-export interface ConversationDetailResponse {
+export interface ConversationMessagesResponse {
   success: boolean
-  data: Conversation
+  data: {
+    conversation: Conversation
+    messages: MessageEvent[]
+  }
   timestamp: string
 }
 
