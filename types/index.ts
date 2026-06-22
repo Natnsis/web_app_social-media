@@ -127,3 +127,271 @@ export interface CreatePostResponse {
   data: Post
   timestamp: string
 }
+
+// ── Chat / Messaging Types ──
+
+export interface MessageSender {
+  id: string
+  fullName: string
+  avatarUrl: string | null
+}
+
+export interface MessageReplyTo {
+  id: string
+  body: string
+  mediaUrl: string | null
+  deletedAt: string | null
+  sender: MessageSender
+}
+
+export interface MessageEvent {
+  id: string
+  conversationId: string
+  senderId: string
+  replyToId: string | null
+  body: string
+  mediaUrl: string | null
+  isRead: boolean
+  createdAt: string
+  sender: MessageSender
+  replyTo: MessageReplyTo | null
+}
+
+export interface MessageDeletedEvent {
+  conversationId: string
+  messageId: string
+}
+
+export interface ConvReadEvent {
+  conversationId: string
+  readBy: string
+}
+
+export interface TypingDmEvent {
+  conversationId: string
+  userId: string
+}
+
+export interface SendMessagePayload {
+  conversationId?: string
+  recipientId?: string
+  body: string
+  mediaUrl?: string
+}
+
+export interface ReplyMessagePayload {
+  conversationId: string
+  replyToId: string
+  body: string
+  mediaUrl?: string
+}
+
+export interface UpdateMessagePayload {
+  messageId: string
+  body: string
+}
+
+export interface DeleteMessagePayload {
+  messageId: string
+}
+
+export interface ConvPayload {
+  conversationId: string
+}
+
+export interface Conversation {
+  id: string
+  participantA: ParticipantInfo
+  participantB: ParticipantInfo
+  lastMessage: MessageEvent | null
+  unreadCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ParticipantInfo {
+  id: string
+  fullName: string
+  initials: string
+  avatarUrl: string | null
+  isOnline: boolean
+  lastSeenAt: string | null
+  lastSeenText: string | null
+}
+
+export interface ConversationsResponse {
+  success: boolean
+  data: Conversation[]
+  meta: { total: number }
+}
+
+export interface MessagesResponse {
+  success: boolean
+  data: MessageEvent[]
+  meta: { total: number; skip: number; take: number }
+}
+
+export interface UnreadCountResponse {
+  success: boolean
+  data: { count: number }
+}
+
+// ── Group Chat Types ──
+
+export interface GroupComment {
+  id: string
+  groupId: string
+  senderId: string
+  parentId: string | null
+  body: string
+  mediaUrl: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+  sender: MessageSender
+  _count: { reads: number }
+  reads: GroupMessageReadReceipt[]
+}
+
+export interface GroupMessageReadReceipt {
+  seenAt: string
+  user: { id: string; fullName: string; avatarUrl: string | null }
+}
+
+export interface GroupCommentsResponse {
+  success: boolean
+  data: GroupComment[]
+  meta: { total: number; skip: number; take: number }
+}
+
+export interface GroupMessageReplyEvent {
+  parentId: string
+  reply: GroupComment
+}
+
+export interface GroupMessageDeletedEvent {
+  groupId: string
+  messageId: string
+}
+
+export interface GroupMessageSeenEvent {
+  groupId: string
+  messageId: string
+  userId: string
+  seenAt: string
+  seenBy: { id: string; fullName: string; avatarUrl: string | null }
+}
+
+export interface GroupTypingEvent {
+  groupId: string
+  userId: string
+}
+
+export interface GroupMemberJoinedEvent {
+  groupId: string
+  user: { id: string; fullName: string; avatarUrl: string | null }
+}
+
+export interface GroupMemberLeftEvent {
+  groupId: string
+  userId: string
+}
+
+export interface CreateGroupPayload {
+  name: string
+  description?: string
+  category?: string
+  isPrivate?: boolean
+}
+
+export interface CreateGroupResponse {
+  success: boolean
+  data: { id: string }
+}
+
+// ── Notification Types ──
+
+export interface NotificationEvent {
+  id: string
+  recipientUserId: string
+  type: string
+  title: string
+  body: string
+  data: Record<string, unknown> | null
+  isRead: boolean
+  createdAt: string
+}
+
+export interface NotificationsResponse {
+  success: boolean
+  data: NotificationEvent[]
+  meta: { total: number; skip: number; take: number }
+}
+
+export interface MarkReadPayload {
+  notificationId: string
+}
+
+// ── Presence Types ──
+
+export interface PresenceOnlineEvent {
+  userId: string
+}
+
+export interface PresenceOfflineEvent {
+  userId: string
+  lastSeenAt: string
+}
+
+export interface PresenceFields {
+  isOnline: boolean
+  lastSeenAt: string | null
+  lastSeenText: string | null
+}
+
+export interface ShortChurch {
+  id: string
+  name: string
+  logoUrl: string | null
+  slug: string
+}
+
+export interface ShortNovaFile {
+  novaVideoId: string | null
+  streamCode: string | null
+  appId: string | null
+  isReady: boolean
+  novaUrl: string | null
+  mediaType: string
+}
+
+export interface ShortCount {
+  likes: number
+  comments: number
+}
+
+export interface Short {
+  id: string
+  churchId: string
+  title: string
+  description: string
+  videoUrl: string | null
+  novaFileId: string
+  isPublished: boolean
+  publishedAt: string
+  viewCount: number
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+  church: ShortChurch
+  _count: ShortCount
+  timeAgo: string
+  novaFile: ShortNovaFile
+}
+
+export interface ShortsResponse {
+  success: boolean
+  data: Short[]
+  meta: PostsMeta
+  timestamp: string
+}

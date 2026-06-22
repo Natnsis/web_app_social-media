@@ -1,244 +1,274 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
 import {
-    Sheet, SheetContent, SheetHeader, SheetTitle,
+  Sheet, SheetContent,
 } from "@/components/ui/sheet"
+import { StreamPlayerWrapper } from "@/components/shorts/stream-player"
+import { CommentsSection } from "@/components/shorts/comments-section"
+import { useShorts, useToggleShortLike } from "@/hooks/use-shorts"
 import {
-    Heart, MessageSquare, CornerUpRight, MusicNote, Send, Link, Mail,
+  Heart, MessageSquare, CornerUpRight, MusicNote,
 } from "nasicon-react/outline"
 import { Heart as HeartSolid } from "nasicon-react/solid"
+import type { Short } from "@/types"
 
-const shortsData = [
-    {
-        id: 1,
-        creator: "Beza Internatio...",
-        creatorInitials: "BI",
-        description: "Powerful worship session at Beza International Church. #Worship #Addis",
-        audio: "Original Audio - Beza Worship Team",
-        likes: 12000,
-        comments: 856,
-        bg: "from-gray-900 to-gray-700",
-        commentList: [
-            { id: 1, user: "Sister Sara", initials: "SS", text: "Amen! 🙏 This blessed my soul.", time: "2m" },
-            { id: 2, user: "Brother Yared", initials: "BY", text: "Glory to God! Share this everywhere.", time: "5m" },
-            { id: 3, user: "Pastor Elias", initials: "PE", text: "What a powerful moment of worship.", time: "10m" },
-        ],
-    },
-    {
-        id: 2,
-        creator: "Grace Community",
-        creatorInitials: "GC",
-        description: "Sunday praise and worship highlights. Come join us every week!",
-        audio: "Praise Him - Grace Choir",
-        likes: 8500,
-        comments: 410,
-        bg: "from-blue-900 to-blue-700",
-        commentList: [
-            { id: 1, user: "Faith Walker", initials: "FW", text: "Our church family is everything ❤️", time: "1m" },
-            { id: 2, user: "Hope Ministry", initials: "HM", text: "God is so good!", time: "8m" },
-        ],
-    },
-    {
-        id: 3,
-        creator: "Hope Valley",
-        creatorInitials: "HV",
-        description: "Evening prayer service live recording. Be blessed!",
-        audio: "Still - Hope Valley Worship",
-        likes: 5200,
-        comments: 290,
-        bg: "from-purple-900 to-purple-700",
-        commentList: [
-            { id: 1, user: "New Life", initials: "NL", text: "This touched my heart deeply.", time: "3m" },
-        ],
-    },
-]
+function formatCount(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  return String(n)
+}
 
-type Short = typeof shortsData[0]
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+}
 
-function ShortItem({ short }: { short: Short }) {
-    const [liked, setLiked] = useState(false)
-    const [likes, setLikes] = useState(short.likes)
-    const [commentOpen, setCommentOpen] = useState(false)
-    const [shareOpen, setShareOpen] = useState(false)
-    const [commentText, setCommentText] = useState("")
-    const [comments, setComments] = useState(short.commentList)
+function ShortItem({
+  short,
+  active,
+  onCommentOpen,
+}: {
+  short: Short
+  active: boolean
+  onCommentOpen: (id: string) => void
+}) {
+  const [liked, setLiked] = useState(false)
+  const [likes, setLikes] = useState(short._count.likes)
+  const toggleLike = useToggleShortLike()
 
-    function handleLike() {
-        setLiked((v) => !v)
-        setLikes((v) => (liked ? v - 1 : v + 1))
-    }
+  function handleLike() {
+    const wasLiked = liked
+    setLiked(!wasLiked)
+    setLikes((c) => (wasLiked ? c - 1 : c + 1))
+    toggleLike.mutate({ id: short.id, liked: wasLiked })
+  }
 
-    function formatCount(n: number) {
-        return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
-    }
+  return (
+    <div className="relative h-full w-full snap-start overflow-hidden bg-black lg:flex">
+      {/* Video area */}
+      <div className="relative h-full w-full lg:flex-1">
+        <StreamPlayerWrapper short={short} playing={active} />
 
-    function sendComment() {
-        if (!commentText.trim()) return
-        setComments((prev) => [
-            { id: prev.length + 1, user: "You", initials: "AT", text: commentText.trim(), time: "now" },
-            ...prev,
-        ])
-        setCommentText("")
-    }
+        {/* Gradient overlays */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/60 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/70 to-transparent" />
 
-    return (
-        <div className="relative h-full w-full shrink-0 snap-start overflow-hidden">
-            <div className={`absolute inset-0 bg-gradient-to-b ${short.bg}`} />
-            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/60 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/80 to-transparent" />
-
-            <div className="absolute inset-x-0 top-0 flex items-center justify-center py-4 z-10">
-                <h1 className="text-base font-bold text-white tracking-wide">Shorts</h1>
-            </div>
-
-            {/* Right actions */}
-            <div className="absolute right-3 bottom-32 z-10 flex flex-col items-center gap-5">
-                <button onClick={handleLike} className="flex flex-col items-center gap-1">
-                    {liked
-                        ? <HeartSolid size={28} className="text-red-500" />
-                        : <Heart size={28} className="text-white" />}
-                    <span className="text-xs font-semibold text-white">{formatCount(likes)}</span>
-                </button>
-
-                <button onClick={() => setCommentOpen(true)} className="flex flex-col items-center gap-1">
-                    <MessageSquare size={28} className="text-white" />
-                    <span className="text-xs font-semibold text-white">{formatCount(comments.length + short.comments)}</span>
-                </button>
-
-                <button onClick={() => setShareOpen(true)} className="flex flex-col items-center gap-1">
-                    <CornerUpRight size={28} className="text-white" />
-                    <span className="text-xs font-semibold text-white">Share</span>
-                </button>
-
-                <div className="mt-1 size-10 rounded-full ring-2 ring-white bg-primary/60 flex items-center justify-center">
-                    <span className="text-xs font-bold text-white">{short.creatorInitials}</span>
-                </div>
-            </div>
-
-            {/* Bottom info */}
-            <div className="absolute inset-x-0 bottom-6 z-10 px-4 pr-16">
-                <div className="flex items-end gap-3">
-                    <Avatar size="lg" className="shrink-0 ring-2 ring-white">
-                        <AvatarFallback className="bg-primary text-white font-bold text-sm">
-                            {short.creatorInitials}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center gap-2">
-                            <p className="font-bold text-white text-sm truncate">{short.creator}</p>
-                            <Button size="xs" variant="outline"
-                                className="shrink-0 rounded-full border-white bg-transparent text-white text-[11px] hover:bg-white/20">
-                                Follow
-                            </Button>
-                        </div>
-                        <p className="text-xs text-white/80 line-clamp-2">{short.description}</p>
-                        <div className="flex items-center gap-1.5">
-                            <MusicNote size={12} className="text-white shrink-0" />
-                            <p className="text-[11px] text-white/80 truncate">{short.audio}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Comments Sheet */}
-            <Sheet open={commentOpen} onOpenChange={setCommentOpen}>
-                <SheetContent side="bottom" showCloseButton={false}
-                    className="max-h-[70%] rounded-t-3xl px-0 pb-0">
-                    <SheetHeader className="px-4 pb-2">
-                        <SheetTitle className="text-center text-sm">
-                            {formatCount(comments.length + short.comments)} Comments
-                        </SheetTitle>
-                    </SheetHeader>
-                    <Separator />
-                    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 max-h-[45vh]">
-                        {comments.map((c) => (
-                            <div key={c.id} className="flex gap-3">
-                                <Avatar size="sm">
-                                    <AvatarFallback className="bg-primary/20 text-primary text-xs">{c.initials}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                    <div className="flex items-baseline gap-2">
-                                        <p className="text-xs font-semibold">{c.user}</p>
-                                        <p className="text-[10px] text-muted-foreground">{c.time}</p>
-                                    </div>
-                                    <p className="text-sm text-foreground">{c.text}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex items-center gap-2 border-t border-border px-4 py-3">
-                        <Avatar size="sm">
-                            <AvatarFallback className="bg-primary text-white text-xs">AT</AvatarFallback>
-                        </Avatar>
-                        <Input
-                            placeholder="Add a comment..."
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && sendComment()}
-                            className="flex-1 rounded-full h-9"
-                        />
-                        <button onClick={sendComment} className="text-primary">
-                            <Send size={20} />
-                        </button>
-                    </div>
-                </SheetContent>
-            </Sheet>
-
-            {/* Share Sheet */}
-            <Sheet open={shareOpen} onOpenChange={setShareOpen}>
-                <SheetContent side="bottom" showCloseButton={false}
-                    className="rounded-t-3xl px-0">
-                    <SheetHeader className="px-4 pb-2">
-                        <SheetTitle className="text-center text-sm">Share</SheetTitle>
-                    </SheetHeader>
-                    <Separator />
-                    <div className="px-4 py-4 space-y-4">
-                        <div className="flex gap-4 overflow-x-auto pb-2">
-                            {[
-                                { label: "Copy Link", Icon: Link, color: "bg-gray-100 dark:bg-gray-800" },
-                                { label: "Direct", Icon: Send, color: "bg-blue-50 dark:bg-blue-950" },
-                                { label: "Email", Icon: Mail, color: "bg-green-50 dark:bg-green-950" },
-                                { label: "More", Icon: CornerUpRight, color: "bg-purple-50 dark:bg-purple-950" },
-                            ].map((item) => (
-                                <button key={item.label} className="flex shrink-0 flex-col items-center gap-2">
-                                    <div className={`flex size-14 items-center justify-center rounded-full ${item.color}`}>
-                                        <item.Icon size={22} className="text-foreground" />
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">{item.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2">
-                            <p className="flex-1 truncate text-xs text-muted-foreground">
-                                https://faithconnect.app/shorts/{short.id}
-                            </p>
-                            <Button size="xs" variant="outline">Copy</Button>
-                        </div>
-                    </div>
-                    <div className="px-4 pb-4">
-                        <Button variant="ghost" className="w-full" onClick={() => setShareOpen(false)}>
-                            Cancel
-                        </Button>
-                    </div>
-                </SheetContent>
-            </Sheet>
+        {/* Top bar */}
+        <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-center px-4 py-4">
+          <h1 className="text-base font-bold tracking-wide text-white">Shorts</h1>
         </div>
-    )
+
+        {/* Mobile: Right action buttons */}
+        <div className="absolute bottom-24 right-3 z-10 flex flex-col items-center gap-5 lg:hidden">
+          <button onClick={handleLike} className="flex flex-col items-center gap-1">
+            {liked
+              ? <HeartSolid size={28} className="text-red-500" />
+              : <Heart size={28} className="text-white" />}
+            <span className="text-xs font-semibold text-white">{formatCount(likes)}</span>
+          </button>
+
+          <button onClick={() => onCommentOpen(short.id)} className="flex flex-col items-center gap-1">
+            <MessageSquare size={28} className="text-white" />
+            <span className="text-xs font-semibold text-white">{formatCount(short._count.comments)}</span>
+          </button>
+
+          <button className="flex flex-col items-center gap-1">
+            <CornerUpRight size={28} className="text-white" />
+            <span className="text-xs font-semibold text-white">Share</span>
+          </button>
+
+          <Avatar className="mt-1 ring-2 ring-white">
+            <AvatarFallback className="bg-primary text-xs font-bold text-white">
+              {getInitials(short.church.name)}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+
+        {/* Mobile: Bottom info */}
+        <div className="absolute inset-x-0 bottom-4 z-10 px-4 pr-20 lg:hidden">
+          <div className="flex items-end gap-3">
+            <Avatar className="shrink-0 ring-2 ring-white">
+              <AvatarFallback className="bg-primary text-xs font-bold text-white">
+                {getInitials(short.church.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-bold text-white">{short.church.name}</p>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  className="shrink-0 rounded-full border-white bg-transparent text-[11px] text-white hover:bg-white/20"
+                >
+                  Follow
+                </Button>
+              </div>
+              <p className="line-clamp-2 text-xs text-white/80">{short.description}</p>
+              {short.novaFile?.streamCode && (
+                <div className="flex items-center gap-1.5">
+                  <MusicNote size={12} className="shrink-0 text-white" />
+                  <p className="truncate text-[11px] text-white/60">Original Audio</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop: Right panel */}
+      <div className="hidden w-[420px] shrink-0 border-l border-white/10 bg-background lg:flex lg:flex-col">
+        {/* Creator info */}
+        <div className="border-b border-border px-4 py-4">
+          <div className="flex items-center gap-3">
+            <Avatar className="ring-2 ring-primary/30">
+              <AvatarFallback className="bg-primary text-xs font-bold text-primary-foreground">
+                {getInitials(short.church.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold">{short.church.name}</p>
+              <p className="text-xs text-muted-foreground">{short.viewCount} views &middot; {short.timeAgo}</p>
+            </div>
+            <Button size="xs" className="shrink-0 rounded-full">
+              Follow
+            </Button>
+          </div>
+          <p className="mt-2 text-sm text-foreground">{short.description}</p>
+          {short.novaFile?.streamCode && (
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <MusicNote size={12} className="text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Original Audio</p>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop action bar */}
+        <div className="flex items-center gap-4 border-b border-border px-4 py-2.5">
+          <button onClick={handleLike} className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-red-500 transition-colors">
+            {liked
+              ? <HeartSolid size={18} className="text-red-500" />
+              : <Heart size={18} />}
+            <span>{formatCount(likes)}</span>
+          </button>
+          <button className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+            <MessageSquare size={18} />
+            <span>{formatCount(short._count.comments)}</span>
+          </button>
+          <button className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+            <CornerUpRight size={18} />
+            <span>Share</span>
+          </button>
+        </div>
+
+        {/* Desktop comments */}
+        <div className="flex-1 overflow-hidden">
+          <CommentsSection shortId={short.id} />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function ShortsPage() {
+  const { data, isLoading, isError, refetch } = useShorts()
+  const shorts = data?.data ?? []
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [commentShortId, setCommentShortId] = useState<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const shortRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  const handleScroll = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+    const index = Math.round(container.scrollTop / container.clientHeight)
+    if (index !== activeIndex) {
+      setActiveIndex(index)
+    }
+  }, [activeIndex])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    container.addEventListener("scroll", handleScroll, { passive: true })
+    return () => container.removeEventListener("scroll", handleScroll)
+  }, [handleScroll])
+
+  function handleCommentOpen(id: string) {
+    setCommentShortId(id)
+  }
+
+  if (isLoading) {
     return (
-        <div className="h-full w-full snap-y snap-mandatory overflow-y-scroll lg:px-12 xl:px-24 2xl:px-48">
-            {shortsData.map((short) => (
-                <div key={short.id} className="h-full w-full snap-start overflow-hidden rounded-none lg:rounded-xl">
-                    <ShortItem short={short} />
-                </div>
-            ))}
+      <div className="flex h-full items-center justify-center bg-black">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          <p className="text-sm text-white/60">Loading shorts...</p>
         </div>
+      </div>
     )
+  }
+
+  if (isError) {
+    return (
+      <div className="flex h-full items-center justify-center bg-black">
+        <div className="flex flex-col items-center gap-3 px-4 text-center">
+          <p className="text-sm text-white/80">Failed to load shorts</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="border-white/30 text-white">
+            Try again
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (shorts.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center bg-black">
+        <p className="text-sm text-white/60">No shorts yet</p>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div
+        ref={containerRef}
+        className="h-full w-full snap-y snap-mandatory overflow-y-scroll bg-black"
+      >
+        {shorts.map((short, index) => (
+          <div
+            key={short.id}
+            ref={(el) => { shortRefs.current[index] = el }}
+            className="h-full w-full snap-start"
+          >
+            <ShortItem
+              short={short}
+              active={index === activeIndex}
+              onCommentOpen={handleCommentOpen}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Mobile Comments Sheet */}
+      <Sheet open={!!commentShortId} onOpenChange={(open) => { if (!open) setCommentShortId(null) }}>
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          className="flex max-h-[85%] flex-col rounded-t-3xl px-0 pb-0"
+        >
+          {commentShortId && (
+            <CommentsSection shortId={commentShortId} onClose={() => setCommentShortId(null)} />
+          )}
+        </SheetContent>
+      </Sheet>
+    </>
+  )
 }

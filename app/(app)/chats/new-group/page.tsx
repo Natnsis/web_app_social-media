@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ChevronLeft, ImagePlus } from "nasicon-react/outline"
 import { Button } from "@/components/ui/button"
@@ -11,12 +12,38 @@ import { Separator } from "@/components/ui/separator"
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
+import { apiCreateGroup } from "@/lib/api/groups"
 
 export default function NewGroupPage() {
+    const router = useRouter()
     const [groupName, setGroupName] = useState("")
     const [description, setDescription] = useState("")
     const [category, setCategory] = useState("bible-study")
     const [isPrivate, setIsPrivate] = useState(true)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    async function handleSubmit() {
+        if (!groupName.trim()) {
+            setError("Group name is required")
+            return
+        }
+        setLoading(true)
+        setError(null)
+        try {
+            const res = await apiCreateGroup({
+                name: groupName.trim(),
+                description: description.trim() || undefined,
+                category,
+                isPrivate,
+            })
+            router.push(`/chats/${res.data.id}`)
+        } catch (e: any) {
+            setError(e.message || "Failed to create group")
+        } finally {
+            setLoading(false)
+        }
+    }
 
     return (
         <div className="flex h-full flex-col overflow-hidden bg-background">
@@ -28,10 +55,16 @@ export default function NewGroupPage() {
             </header>
 
             <div className="flex-1 overflow-y-auto px-4 pb-24 space-y-5">
+                {error && (
+                    <div className="rounded-2xl bg-destructive/10 p-4 text-sm text-destructive">
+                        {error}
+                    </div>
+                )}
+
                 {/* Cover Image */}
                 <div>
                     <p className="mb-2 text-sm font-semibold">Cover Image</p>
-                    <button className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-border py-8">
+                    <button type="button" className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-border py-8">
                         <div className="flex size-14 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950">
                             <ImagePlus size={24} className="text-primary" />
                         </div>
@@ -93,8 +126,12 @@ export default function NewGroupPage() {
 
             {/* CTA */}
             <div className="shrink-0 border-t border-border bg-background px-4 py-4">
-                <Button className="h-12 w-full rounded-2xl text-base font-semibold">
-                    Create Group
+                <Button
+                    className="h-12 w-full rounded-2xl text-base font-semibold"
+                    onClick={handleSubmit}
+                    disabled={loading}
+                >
+                    {loading ? "Creating..." : "Create Group"}
                 </Button>
             </div>
         </div>
