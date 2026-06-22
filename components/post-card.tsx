@@ -92,6 +92,7 @@ export function PostCard({
                 fill
                 className="object-cover"
                 sizes="(min-width: 1024px) 680px, 100vw"
+                unoptimized
                 onError={() => setImgError((prev) => new Set(prev).add(images[0].id))}
               />
               {imgError.has(images[0].id) && (
@@ -112,6 +113,7 @@ export function PostCard({
                 fill
                 className="object-cover"
                 sizes="(min-width: 1024px) 680px, 100vw"
+                unoptimized
                 onError={() => setImgError((prev) => new Set(prev).add(images[0].id))}
               />
               {imgError.has(images[0].id) && (
@@ -130,6 +132,7 @@ export function PostCard({
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 50vw, 320px"
+                    unoptimized
                     onError={() => setImgError((prev) => new Set(prev).add(file.id))}
                   />
                   {imgError.has(file.id) && (

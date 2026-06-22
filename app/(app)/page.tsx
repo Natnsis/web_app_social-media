@@ -59,8 +59,12 @@ const upcomingEvents = [
 ]
 
 const nearbyChurches = [
-    { name: "Beza Community Church", dist: "0.4 km", initials: "BC" },
-    { name: "Summit Fellowship", dist: "1.3 km", initials: "SF" },
+    { id: "beza", name: "Beza Community Church", dist: "0.4 km", initials: "BC" },
+    { id: "summit", name: "Summit Fellowship", dist: "1.3 km", initials: "SF" },
+    { id: "grace", name: "Grace Chapel", dist: "2.1 km", initials: "GC" },
+    { id: "hope", name: "Hope Valley Church", dist: "2.8 km", initials: "HV" },
+    { id: "zion", name: "Zion Baptist", dist: "3.5 km", initials: "ZB" },
+    { id: "newlife", name: "New Life Ministry", dist: "4.2 km", initials: "NL" },
 ]
 
 type MenuSection = {
@@ -151,6 +155,7 @@ function FeedContent() {
     const toggleSave = useToggleSave()
     const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
     const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set())
+    const [followedChurches, setFollowedChurches] = useState<Set<string>>(new Set())
 
     const handleLike = useCallback((id: string) => {
         const liked = likedPosts.has(id)
@@ -178,25 +183,11 @@ function FeedContent() {
 
     return (
         <div className="space-y-4">
-            {/* Daily Verse */}
-            <div className="overflow-hidden rounded-2xl">
-                <div className="relative min-h-[150px] bg-cover bg-center px-4 py-5" style={{ backgroundImage: "url('/background.jpg')" }}>
-                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-black/70 to-blue-900/60" />
-                    <div className="relative z-10 space-y-2">
-                        <p className="text-[10px] font-semibold tracking-widest text-blue-300 uppercase">Daily Scripture</p>
-                        <p className="text-xl font-bold leading-snug text-white">
-                            &ldquo;The Lord is my light and my salvation&mdash;whom shall I fear?&rdquo;
-                        </p>
-                        <p className="text-sm font-semibold text-blue-300">Psalm 27:1</p>
-                    </div>
-                </div>
-            </div>
-
             {/* Live Now */}
             <div>
                 <div className="mb-2.5 flex items-center justify-between">
                     <h2 className="text-sm font-bold text-primary">Live Now</h2>
-                    <Button variant="outline" size="xs" className="rounded-full border-primary/50 text-primary text-[10px]">See all</Button>
+                    <Button variant="ghost" size="xs" className="rounded-full text-primary text-[10px]">View all</Button>
                 </div>
                 <div className="flex h-fit gap-4 overflow-x-auto px-1 py-1">
                     {liveUsers.map((u, i) => (
@@ -213,6 +204,60 @@ function FeedContent() {
                             <span className="mt-2 w-14 truncate text-center text-[10px] text-muted-foreground">{u.name}</span>
                         </Link>
                     ))}
+                </div>
+            </div>
+
+            {/* Nearby Churches */}
+            <div>
+                <div className="mb-2.5 flex items-center justify-between">
+                    <h2 className="flex items-center gap-1.5 text-sm font-bold"><LocationPin size={15} className="text-primary" /> Nearby</h2>
+                    <Link href="/nearby-churches">
+                        <Button variant="ghost" size="xs" className="rounded-full text-primary text-[10px]">See all</Button>
+                    </Link>
+                </div>
+                <div className="flex gap-3 overflow-x-auto px-1 py-1">
+                    {nearbyChurches.map((c) => (
+                        <div key={c.id} className="flex w-44 shrink-0 flex-col gap-2 rounded-xl border border-border bg-card p-3">
+                            <div className="flex items-center gap-2.5">
+                                <Avatar size="sm" className="shrink-0">
+                                    <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">{c.initials}</AvatarFallback>
+                                </Avatar>
+                                <p className="truncate text-xs font-semibold">{c.name}</p>
+                            </div>
+                            <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                <LocationPin size={12} className="text-primary" /> {c.dist}
+                            </p>
+                            <Button
+                                variant="default"
+                                size="xs"
+                                className="w-full rounded-full text-[10px]"
+                                onClick={() => {
+                                    setFollowedChurches((prev) => {
+                                        const next = new Set(prev)
+                                        if (next.has(c.id)) next.delete(c.id)
+                                        else next.add(c.id)
+                                        return next
+                                    })
+                                }}
+                            >
+                                {followedChurches.has(c.id) ? "Following" : "Follow"}
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Daily Verse */}
+            <div className="overflow-hidden rounded-2xl">
+                <div className="relative min-h-[150px] bg-cover bg-center px-4 py-5" style={{ backgroundImage: "url('/background.jpg')" }}>
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-black/70 to-blue-900/60" />
+                    <div className="relative z-10 space-y-2">
+                        <p className="text-[10px] font-semibold tracking-widest text-blue-300 uppercase">Daily Scripture</p>
+                        <p className="text-xl font-bold leading-snug text-white">
+                            &ldquo;The Lord is my light and my salvation&mdash;whom shall I fear?&rdquo;
+                        </p>
+                        <p className="text-sm font-semibold text-blue-300">Psalm 27:1</p>
+                    </div>
                 </div>
             </div>
 
@@ -520,7 +565,9 @@ function DesktopRightPanel() {
                             </div>
                         </div>
                     ))}
-                    <Button variant="outline" size="xs" className="w-full rounded-xl text-xs">Open Local Map</Button>
+                    <Link href="/nearby-churches">
+                        <Button variant="outline" size="xs" className="w-full rounded-xl text-xs">Open Local Map</Button>
+                    </Link>
                 </div>
             </div>
 

@@ -8,11 +8,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useAuthStore } from "@/lib/store/auth"
+import { useAuthStore, isTokenExpired } from "@/lib/store/auth"
 import { PostCard } from "@/components/post-card"
 import { useSavedPosts, useToggleLike, useToggleSave } from "@/hooks/use-posts"
 import {
-    Gear, ChevronDown, Globe, ArrowRightFromBracket,
+    Gear, Globe, ArrowRightFromBracket, Heart, File, Bookmark, Radio,
 } from "nasicon-react/outline"
 import { CirclePlus } from "nasicon-react/solid"
 import type { Post } from "@/types"
@@ -22,8 +22,9 @@ const filterPills = ["All", "Posts", "Shorts", "Videos"]
 export default function AccountPage() {
     const router = useRouter()
     const [activeFilter, setActiveFilter] = useState("All")
-    const { user, logout } = useAuthStore()
-    const { data, isLoading, isError, refetch } = useSavedPosts()
+    const { user, logout, accessToken } = useAuthStore()
+    const tokenValid = !!(accessToken && !isTokenExpired(accessToken))
+    const { data, isLoading, isError, refetch } = useSavedPosts(1, 20, tokenValid)
     const toggleLike = useToggleLike()
     const toggleSave = useToggleSave()
     const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
@@ -56,11 +57,7 @@ export default function AccountPage() {
     return (
         <div className="relative flex h-full flex-col overflow-hidden">
             {/* Header */}
-            <header className="flex shrink-0 items-center justify-between px-4 py-2">
-                <button className="flex items-center gap-1 text-sm font-bold">
-                    {user?.name ?? "Abebe Tesfaye"}
-                    <ChevronDown size={16} />
-                </button>
+            <header className="flex shrink-0 items-center justify-end px-4 py-2">
                 <div className="flex items-center gap-1">
                     <ThemeToggle />
                     <Link href="/account/settings">
@@ -108,17 +105,23 @@ export default function AccountPage() {
                 </div>
 
                 {/* Tabs */}
-                <Tabs defaultValue="Saved">
+                <Tabs defaultValue="Posts">
                     <TabsList className="flex w-full bg-transparent border-b border-border rounded-none px-4 h-auto pb-0 gap-0">
-                        {["Saved", "Liked", "Channels"].map((tab) => (
+                        {[
+                            { value: "Posts", icon: File },
+                            { value: "Saved", icon: Bookmark },
+                            { value: "Liked", icon: Heart },
+                            { value: "Channels", icon: Radio },
+                        ].map(({ value: tab, icon: Icon }) => (
                             <TabsTrigger key={tab} value={tab}
                                 className="flex-1 rounded-none border-b-2 border-transparent pb-2.5 pt-1 text-sm font-semibold data-active:border-primary data-active:text-primary data-active:bg-transparent">
-                                {tab}
+                                <Icon size={15} className="sm:mr-1.5" />
+                                <span className="hidden sm:inline">{tab}</span>
                             </TabsTrigger>
                         ))}
                     </TabsList>
 
-                    {["Saved", "Liked", "Channels"].map((tab) => (
+                    {["Posts", "Saved", "Liked", "Channels"].map((tab) => (
                         <TabsContent key={tab} value={tab}>
                             {/* Filter pills */}
                             <div className="flex gap-2 overflow-x-auto px-4 py-3">
@@ -144,7 +147,15 @@ export default function AccountPage() {
 
                             {/* Posts */}
                             <div className="px-4 space-y-4">
-                                {tab === "Saved" && isLoading && (
+                                {tab === "Saved" && !tokenValid && (
+                                    <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
+                                        <p className="text-sm font-semibold">Sign in to view saved posts</p>
+                                        <p className="text-xs text-muted-foreground">Your saved posts will appear here once you sign in</p>
+                                        <Button variant="default" size="sm" onClick={() => router.push("/login")}>Sign in</Button>
+                                    </div>
+                                )}
+
+                                {tab === "Saved" && tokenValid && isLoading && (
                                     <>
                                         {[1, 2].map((i) => (
                                             <div key={i} className="rounded-2xl border border-border bg-card p-3 animate-pulse">
@@ -164,21 +175,21 @@ export default function AccountPage() {
                                     </>
                                 )}
 
-                                {tab === "Saved" && isError && (
+                                {tab === "Saved" && tokenValid && isError && (
                                     <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
                                         <p className="text-sm text-muted-foreground">Failed to load saved posts</p>
                                         <Button variant="outline" size="sm" onClick={() => refetch()}>Try again</Button>
                                     </div>
                                 )}
 
-                                {tab === "Saved" && !isLoading && !isError && posts.length === 0 && (
+                                {tab === "Saved" && tokenValid && !isLoading && !isError && posts.length === 0 && (
                                     <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
                                         <p className="text-sm font-semibold">No saved posts yet</p>
                                         <p className="text-xs text-muted-foreground">Posts you save will appear here</p>
                                     </div>
                                 )}
 
-                                {tab === "Saved" && !isLoading && !isError && posts.map((post: Post) => (
+                                {tab === "Saved" && tokenValid && !isLoading && !isError && posts.map((post: Post) => (
                                     <PostCard
                                         key={post.id}
                                         post={post}

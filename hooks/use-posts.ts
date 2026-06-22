@@ -23,10 +23,11 @@ export function usePosts(page = 1, limit = 20) {
   })
 }
 
-export function useSavedPosts(page = 1, limit = 20) {
+export function useSavedPosts(page = 1, limit = 20, enabled = true) {
   return useQuery({
     queryKey: ["posts", "saved", page, limit],
     queryFn: () => apiGetSavedPosts(page, limit),
+    enabled,
   })
 }
 
