@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useAuthStore, isTokenExpired } from "@/lib/store/auth"
-import { useConversations } from "@/hooks/use-conversations"
+import { useConversations, useConversation } from "@/hooks/use-conversations"
 import { useGroups, useGroupComments } from "@/hooks/use-groups"
 import { useMessagingSocket } from "@/hooks/use-messaging-socket"
 import { useGroupSocket } from "@/hooks/use-group-socket"
+import { getSocket } from "@/lib/socket"
 import { ChatListItem } from "@/components/chat/chat-list-item"
 import { MessageBubble } from "@/components/chat/message-bubble"
 import { ChatInput } from "@/components/chat/chat-input"
@@ -19,25 +20,98 @@ type TabType = "direct" | "groups"
 
 function DesktopConversation({
   tab,
+  conversationId,
   groupId,
+  otherParticipant,
   onSendMessage,
   onSendGroupMessage,
+  onSendRead,
 }: {
   tab: TabType
   conversationId?: string
   groupId?: string
+  otherParticipant?: { fullName: string; initials: string; isOnline: boolean; lastSeenText: string | null } | null
   onSendMessage?: (text: string) => void
   onSendGroupMessage?: (text: string) => void
+  onSendRead?: (conversationId: string) => void
 }) {
   const { user } = useAuthStore()
+
+  // ── Direct messages ──
+
   const [dmMessages, setDmMessages] = useState<MessageEvent[]>([])
+  const [dmTypingUserId, setDmTypingUserId] = useState<string | null>(null)
+
+  const { data: convDetail, isLoading: convLoading } = useConversation(
+    tab === "direct" ? conversationId ?? null : null,
+  )
+
+  const messages = convDetail?.data ?? null
+
+  const prevConvIdRef = useRef<string | null>(null)
+
+  // Seed dmMessages from API when conversationId changes (first load only)
+  useEffect(() => {
+    if (tab !== "direct" || !conversationId || !messages) return
+    if (prevConvIdRef.current !== conversationId) {
+      prevConvIdRef.current = conversationId
+      setDmMessages(messages)
+      setDmTypingUserId(null)
+    }
+  }, [conversationId, tab, messages])
+
+  // Socket listeners for real-time DM updates
+  useEffect(() => {
+    if (tab !== "direct" || !conversationId) return
+    const socket = getSocket("/messaging")
+    if (!socket) return
+
+    const onNew = (msg: MessageEvent) => {
+      if (msg.conversationId === conversationId) {
+        setDmMessages((prev) => [...prev, msg])
+      }
+    }
+    const onUpdated = (msg: MessageEvent) => {
+      if (msg.conversationId === conversationId) {
+        setDmMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)))
+      }
+    }
+    const onDeleted = ({ conversationId: cId, messageId }: { conversationId: string; messageId: string }) => {
+      if (cId === conversationId) {
+        setDmMessages((prev) => prev.filter((m) => m.id !== messageId))
+      }
+    }
+    const onTypingStart = ({ conversationId: cId, userId }: { conversationId: string; userId: string }) => {
+      if (cId === conversationId && userId !== user?.id) setDmTypingUserId(userId)
+    }
+    const onTypingStop = ({ conversationId: cId }: { conversationId: string }) => {
+      if (cId === conversationId) setDmTypingUserId(null)
+    }
+
+    socket.on("message:new", onNew)
+    socket.on("message:updated", onUpdated)
+    socket.on("message:deleted", onDeleted)
+    socket.on("typing:start", onTypingStart)
+    socket.on("typing:stop", onTypingStop)
+
+    onSendRead?.(conversationId)
+
+    return () => {
+      socket.off("message:new", onNew)
+      socket.off("message:updated", onUpdated)
+      socket.off("message:deleted", onDeleted)
+      socket.off("typing:start", onTypingStart)
+      socket.off("typing:stop", onTypingStop)
+    }
+  }, [conversationId, tab, user?.id, onSendRead])
+
+  // ── Group messages ──
 
   const {
     data: groupCommentsData,
     isLoading: groupCommentsLoading,
   } = useGroupComments(tab === "groups" ? groupId ?? null : null)
 
-  // Handle both direct array response and wrapped { data: [...] } response
   const groupMessages = Array.isArray(groupCommentsData)
     ? groupCommentsData
     : Array.isArray(groupCommentsData?.data)
@@ -47,32 +121,59 @@ function DesktopConversation({
   return (
     <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
       <header className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-4">
-        <Avatar>
-          <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
-            {tab === "groups" ? "G" : "?"}
-          </AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold leading-tight">
-            {tab === "groups" ? "Group Chat" : "Direct Message"}
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            {tab === "groups" ? "Group conversation" : "Select a conversation"}
-          </p>
-        </div>
+        {tab === "direct" && otherParticipant ? (
+          <>
+            <Avatar>
+              <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+                {otherParticipant.fullName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold leading-tight">{otherParticipant.fullName}</p>
+              <div className="flex items-center gap-1">
+                <div className={`size-1.5 rounded-full ${otherParticipant.isOnline ? "bg-green-500" : "bg-muted-foreground/30"}`} />
+                <p className="text-[11px] text-muted-foreground">
+                  {otherParticipant.isOnline ? "Active now" : otherParticipant.lastSeenText ?? "Offline"}
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <Avatar>
+              <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+                {tab === "groups" ? "G" : "?"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold leading-tight">
+                {tab === "groups" ? "Group Chat" : "Direct Message"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {tab === "groups" ? "Group conversation" : "Select a conversation"}
+              </p>
+            </div>
+          </>
+        )}
         <button type="button" className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <CircleInformation size={16} />
         </button>
       </header>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-6 py-5">
+        {convLoading && tab === "direct" && (
+          <div className="flex justify-center py-8">
+            <p className="text-sm text-muted-foreground">Loading messages...</p>
+          </div>
+        )}
+
         {groupCommentsLoading && tab === "groups" && (
           <div className="flex justify-center py-8">
             <p className="text-sm text-muted-foreground">Loading messages...</p>
           </div>
         )}
 
-        {!groupCommentsLoading && tab === "direct" && dmMessages.length === 0 && (
+        {!convLoading && tab === "direct" && dmMessages.length === 0 && (
           <div className="flex h-full items-center justify-center">
             <p className="text-sm text-muted-foreground">No messages yet</p>
           </div>
@@ -104,6 +205,14 @@ function DesktopConversation({
               from={msg.senderId === user?.id ? "me" : "them"}
             />
           ))}
+
+        {dmTypingUserId && tab === "direct" && (
+          <div className="flex items-start">
+            <div className="rounded-2xl rounded-bl-sm bg-muted px-3.5 py-2.5 text-sm text-muted-foreground">
+              <span className="animate-pulse">typing...</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <ChatInput
@@ -150,6 +259,14 @@ export default function ChatsPage() {
       lastMsg: lastMsg?.body ?? "Start a conversation",
       unread: 0,
       online: isOnline,
+      otherParticipant: other
+        ? {
+            fullName: other.fullName,
+            initials: other.initials || other.fullName.charAt(0).toUpperCase(),
+            isOnline,
+            lastSeenText: other.lastSeenText ?? null,
+          }
+        : null,
     }
   })
   const selectedConv = enrichedConversations.length > 0
@@ -170,7 +287,7 @@ export default function ChatsPage() {
     })
   }, [])
 
-  const { sendMessage: sendDm } = useMessagingSocket(isAuthenticated, {
+  const { sendMessage: sendDm, sendRead } = useMessagingSocket(isAuthenticated, {
     onPresenceOnline,
     onPresenceOffline,
   })
@@ -270,7 +387,7 @@ export default function ChatsPage() {
               lastMsg={`${group?._count?.comments ?? 0} messages · ${group?.church?.name ?? ""}`}
               unread={0}
               online={false}
-              href={`/chats/${group?.id}`}
+              href={`/chats/${group?.id}?type=group`}
             />
           ))}
       </div>
@@ -373,7 +490,10 @@ export default function ChatsPage() {
                   unread={0}
                   online={false}
                   active={group?.id === selectedGroupId}
-                  onSelect={() => setSelectedGroupId(group?.id)}
+                  onSelect={() => {
+                    setSelectedGroupId(group?.id)
+                    setSelectedChatId(null)
+                  }}
                 />
               ))}
           </div>
@@ -383,7 +503,9 @@ export default function ChatsPage() {
           <DesktopConversation
             tab="direct"
             conversationId={selectedConv.id}
+            otherParticipant={selectedConv.otherParticipant}
             onSendMessage={handleSendDm}
+            onSendRead={sendRead}
           />
         ) : tab === "groups" && selectedGroupId ? (
           <DesktopConversation

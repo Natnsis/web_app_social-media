@@ -1,73 +1,105 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useAuthStore } from "@/lib/store/auth"
 import { apiGetConversation } from "@/lib/api/messaging"
+import { apiGetGroupComments } from "@/lib/api/groups"
 import { useMessagingSocket } from "@/hooks/use-messaging-socket"
+import { useGroupSocket } from "@/hooks/use-group-socket"
 import { MessageBubble } from "@/components/chat/message-bubble"
 import { ChatInput } from "@/components/chat/chat-input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ChevronLeft, CircleInformation } from "nasicon-react/outline"
-import type { MessageEvent, Conversation } from "@/types"
+import type { MessageEvent, GroupComment } from "@/types"
 
 export default function ChatConversationPage() {
   const params = useParams()
-  const conversationId = params.id as string
+  const searchParams = useSearchParams()
+  const id = params.id as string
+  const isGroup = searchParams.get("type") === "group"
+
   const { user, accessToken } = useAuthStore()
   const tokenValid = !!accessToken
 
-  const [conversation, setConversation] = useState<Conversation | null>(null)
-  const [messages, setMessages] = useState<MessageEvent[]>([])
+  const [dmMessages, setDmMessages] = useState<MessageEvent[]>([])
+  const [groupMessages, setGroupMessages] = useState<GroupComment[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [typingUserId, setTypingUserId] = useState<string | null>(null)
+  const [conversationName, setConversationName] = useState("")
+  const [conversationInitials, setConversationInitials] = useState("?")
 
+  // Fetch messages
   useEffect(() => {
-    if (!conversationId) return
+    if (!id) return
     setLoading(true)
-    apiGetConversation(conversationId)
-      .then((res) => {
-        setConversation(res.data)
-        setMessages(res.data.messages ?? [])
-        setLoading(false)
-      })
-      .catch(() => {
-        setConversation(null)
-        setMessages([])
-        setLoading(false)
-      })
-  }, [conversationId])
+    setError(false)
 
-  const onMessageNew = useCallback((msg: MessageEvent) => {
-    if (msg.conversationId === conversationId) {
-      setMessages((prev) => [...prev, msg])
+    if (isGroup) {
+      apiGetGroupComments(id)
+        .then((res) => {
+          setGroupMessages(res.data ?? [])
+          const first = res.data?.[0]
+          if (first?.sender) {
+            setConversationName(first.sender.fullName || "Group")
+            setConversationInitials(first.sender.fullName?.slice(0, 2).toUpperCase() || "G")
+          }
+          setLoading(false)
+        })
+        .catch(() => {
+          setGroupMessages([])
+          setLoading(false)
+          setError(true)
+        })
+    } else {
+      apiGetConversation(id)
+        .then((res) => {
+          const msgs = res.data?.messages ?? []
+          setDmMessages(msgs)
+          const other = res.data?.participantA?.id === user?.id ? res.data?.participantB : res.data?.participantA
+          if (other) {
+            setConversationName(other.fullName)
+            setConversationInitials(other.initials || other.fullName?.charAt(0).toUpperCase() || "?")
+          }
+          setLoading(false)
+        })
+        .catch(() => {
+          setDmMessages([])
+          setLoading(false)
+          setError(true)
+        })
     }
-  }, [conversationId])
+  }, [id, isGroup, user?.id])
 
+  // ── DM socket ──
+  const onMessageNew = useCallback(
+    (msg: MessageEvent) => {
+      if (msg.conversationId === id) setDmMessages((prev) => [...prev, msg])
+    },
+    [id],
+  )
   const onMessageUpdated = useCallback((msg: MessageEvent) => {
-    setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)))
+    setDmMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)))
   }, [])
-
   const onMessageDeleted = useCallback(({ messageId }: { conversationId: string; messageId: string }) => {
-    setMessages((prev) => prev.filter((m) => m.id !== messageId))
+    setDmMessages((prev) => prev.filter((m) => m.id !== messageId))
   }, [])
-
   const onTypingStart = useCallback(
-    ({ conversationId: convId, userId }: { conversationId: string; userId: string }) => {
-      if (convId === conversationId && userId !== user?.id) setTypingUserId(userId)
+    ({ conversationId, userId }: { conversationId: string; userId: string }) => {
+      if (conversationId === id && userId !== user?.id) setTypingUserId(userId)
     },
-    [conversationId, user?.id],
+    [id, user?.id],
   )
-
   const onTypingStop = useCallback(
-    ({ conversationId: convId }: { conversationId: string; userId: string }) => {
-      if (convId === conversationId) setTypingUserId(null)
+    ({ conversationId }: { conversationId: string; userId: string }) => {
+      if (conversationId === id) setTypingUserId(null)
     },
-    [conversationId],
+    [id],
   )
 
-  const { sendMessage, sendRead, startTyping, stopTyping } = useMessagingSocket(tokenValid, {
+  const { sendMessage, sendRead, startTyping, stopTyping } = useMessagingSocket(tokenValid && !isGroup, {
     onMessageNew,
     onMessageUpdated,
     onMessageDeleted,
@@ -75,54 +107,68 @@ export default function ChatConversationPage() {
     onTypingStop,
   })
 
+  // ── Group socket ──
+  const {
+    sendMessage: sendGroupMessage,
+    startTyping: startGroupTyping,
+    stopTyping: stopGroupTyping,
+  } = useGroupSocket(tokenValid && isGroup, {})
+
+  // Mark as read on mount
   useEffect(() => {
-    if (conversationId && tokenValid) {
-      sendRead(conversationId)
-    }
-  }, [conversationId, tokenValid, sendRead])
+    if (id && tokenValid && !isGroup) sendRead(id)
+  }, [id, tokenValid, isGroup, sendRead])
 
   const handleSend = useCallback(
     (text: string) => {
-      sendMessage({ conversationId, body: text })
+      if (isGroup) {
+        sendGroupMessage?.({ groupId: id, body: text })
+      } else {
+        sendMessage({ conversationId: id, body: text })
+      }
     },
-    [conversationId, sendMessage],
+    [id, isGroup, sendMessage, sendGroupMessage],
   )
 
   const handleTypingStart = useCallback(() => {
-    startTyping(conversationId)
-  }, [conversationId, startTyping])
+    if (isGroup) startGroupTyping?.(id)
+    else startTyping(id)
+  }, [id, isGroup, startTyping, startGroupTyping])
 
   const handleTypingStop = useCallback(() => {
-    stopTyping(conversationId)
-  }, [conversationId, stopTyping])
+    if (isGroup) stopGroupTyping?.(id)
+    else stopTyping(id)
+  }, [id, isGroup, stopTyping, stopGroupTyping])
 
-  const formatTime = (iso: string) => {
-    const d = new Date(iso)
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  }
+  const formatTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
-  const otherParticipant = conversation
-    ? (conversation.participantA.id === user?.id
-        ? conversation.participantB
-        : conversation.participantA)
-    : null
+  const msgs = isGroup
+    ? groupMessages.map((m) => ({
+        id: m.id,
+        body: m.body,
+        createdAt: m.createdAt,
+        senderId: m.senderId,
+        isRead: false,
+      }))
+    : dmMessages
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <header className="flex shrink-0 items-center gap-2 border-b border-border px-2 py-2">
-        <Link href="/chats" className="p-1 text-foreground">
+        <Link href={isGroup ? "/chats" : "/chats"} className="p-1 text-foreground">
           <ChevronLeft size={22} />
         </Link>
         <Avatar>
           <AvatarFallback className="bg-primary/20 text-primary font-semibold text-xs">
-            {otherParticipant ? otherParticipant.fullName.charAt(0).toUpperCase() : "?"}
+            {conversationInitials}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <p className="text-sm font-semibold leading-tight">{otherParticipant?.fullName ?? "Conversation"}</p>
+          <p className="text-sm font-semibold leading-tight">{conversationName || (isGroup ? "Group" : "Conversation")}</p>
           <div className="flex items-center gap-1">
-            <div className={`size-1.5 rounded-full ${otherParticipant?.isOnline ? "bg-green-500" : "bg-muted-foreground/30"}`} />
-            <p className="text-[11px] text-muted-foreground">{otherParticipant?.isOnline ? "Active now" : otherParticipant?.lastSeenText ?? "Offline"}</p>
+            <div className="size-1.5 rounded-full bg-green-500" />
+            <p className="text-[11px] text-muted-foreground">{isGroup ? "Group" : "Active now"}</p>
           </div>
         </div>
         <button type="button" className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -137,19 +183,25 @@ export default function ChatConversationPage() {
           </div>
         )}
 
-        {!loading && messages.length === 0 && (
+        {error && (
           <div className="flex justify-center py-8">
-            <p className="text-sm text-muted-foreground">No messages yet. Start a conversation!</p>
+            <p className="text-sm text-destructive">Failed to load messages</p>
           </div>
         )}
 
-        {messages.map((msg) => (
+        {!loading && !error && msgs.length === 0 && (
+          <div className="flex justify-center py-8">
+            <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
+          </div>
+        )}
+
+        {msgs.map((msg) => (
           <MessageBubble
             key={msg.id}
             text={msg.body}
             time={formatTime(msg.createdAt)}
             from={msg.senderId === user?.id ? "me" : "them"}
-            isRead={msg.isRead}
+            isRead={"isRead" in msg ? (msg as any).isRead : undefined}
           />
         ))}
 
@@ -166,6 +218,7 @@ export default function ChatConversationPage() {
         onSend={handleSend}
         onTypingStart={handleTypingStart}
         onTypingStop={handleTypingStop}
+        placeholder={isGroup ? "Type a group message..." : "Type a message..."}
       />
     </div>
   )
