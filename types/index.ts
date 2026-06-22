@@ -91,6 +91,7 @@ export interface Comment {
   }
   _count: {
     replies: number
+    likes?: number
   }
   replies?: Comment[]
 }
@@ -307,6 +308,24 @@ export interface CreateGroupPayload {
 export interface CreateGroupResponse {
   success: boolean
   data: { id: string }
+}
+
+export interface MinimalGroup {
+  id: string
+  name: string
+  description: string | null
+  category: string
+  isPrivate: boolean
+  coverUrl: string | null
+  memberCount: number
+  lastActivityAt: string | null
+  createdAt: string
+}
+
+export interface GroupsResponse {
+  success: boolean
+  data: MinimalGroup[]
+  meta: { total: number }
 }
 
 // ── Notification Types ──

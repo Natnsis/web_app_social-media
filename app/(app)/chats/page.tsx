@@ -1,58 +1,91 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
 import { useAuthStore, isTokenExpired } from "@/lib/store/auth"
 import { useConversations } from "@/hooks/use-conversations"
 import { useMessagingSocket } from "@/hooks/use-messaging-socket"
+import { useGroupSocket } from "@/hooks/use-group-socket"
+import { apiGetGroupComments } from "@/lib/api/groups"
 import { ChatListItem } from "@/components/chat/chat-list-item"
 import { MessageBubble } from "@/components/chat/message-bubble"
 import { ChatInput } from "@/components/chat/chat-input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { CirclePlus, CircleInformation, Search } from "nasicon-react/outline"
-import type { MessageEvent } from "@/types"
+import { CirclePlus, CircleInformation, Search, Users } from "nasicon-react/outline"
+import type { MessageEvent, GroupComment } from "@/types"
 
-function DesktopConversation() {
+type TabType = "direct" | "groups"
+
+function DesktopConversation({
+  tab,
+  conversationId,
+  groupId,
+  onSendMessage,
+  onSendGroupMessage,
+}: {
+  tab: TabType
+  conversationId?: string
+  groupId?: string
+  onSendMessage?: (text: string) => void
+  onSendGroupMessage?: (text: string) => void
+}) {
   const { user } = useAuthStore()
-  const [messages, setMessages] = useState<MessageEvent[]>([])
+  const [dmMessages, setDmMessages] = useState<MessageEvent[]>([])
+  const [groupMessages, setGroupMessages] = useState<GroupComment[]>([])
+  const [loading, setLoading] = useState(false)
 
-  const handleSend = useCallback((text: string) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        conversationId: "",
-        senderId: user?.id ?? "",
-        replyToId: null,
-        body: text,
-        mediaUrl: null,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        sender: { id: user?.id ?? "", fullName: user?.name ?? "", avatarUrl: null },
-        replyTo: null,
-      },
-    ])
-  }, [user])
+  useEffect(() => {
+    if (tab === "groups" && groupId) {
+      setLoading(true)
+      apiGetGroupComments(groupId)
+        .then((res) => {
+          setGroupMessages(res.data ?? [])
+          setLoading(false)
+        })
+        .catch(() => {
+          setGroupMessages([])
+          setLoading(false)
+        })
+    }
+  }, [tab, groupId])
 
   return (
     <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
       <header className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-4">
         <Avatar>
-          <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">?</AvatarFallback>
+          <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+            {tab === "groups" ? "G" : "?"}
+          </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold leading-tight">Select a conversation</p>
-          <p className="text-[11px] text-muted-foreground">Choose a chat to start messaging</p>
+          <p className="truncate text-sm font-bold leading-tight">
+            {tab === "groups" ? "Group Chat" : "Direct Message"}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {tab === "groups" ? "Group conversation" : "Select a conversation"}
+          </p>
         </div>
         <button type="button" className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <CircleInformation size={16} />
         </button>
       </header>
 
-      {messages.length > 0 && (
-        <div className="flex-1 space-y-3 overflow-y-auto px-6 py-5">
-          {messages.map((msg) => (
+      <div className="flex-1 space-y-3 overflow-y-auto px-6 py-5">
+        {loading && (
+          <div className="flex justify-center py-8">
+            <p className="text-sm text-muted-foreground">Loading messages...</p>
+          </div>
+        )}
+
+        {!loading && tab === "direct" && dmMessages.length === 0 && (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-muted-foreground">No messages yet</p>
+          </div>
+        )}
+
+        {tab === "direct" &&
+          dmMessages.map((msg) => (
             <MessageBubble
               key={msg.id}
               text={msg.body}
@@ -61,16 +94,31 @@ function DesktopConversation() {
               isRead={msg.isRead}
             />
           ))}
-        </div>
-      )}
 
-      {messages.length === 0 && (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Select a conversation to view messages</p>
-        </div>
-      )}
+        {!loading && tab === "groups" && groupMessages.length === 0 && (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
+          </div>
+        )}
 
-      <ChatInput onSend={handleSend} />
+        {tab === "groups" &&
+          groupMessages.map((msg) => (
+            <MessageBubble
+              key={msg.id}
+              text={msg.body}
+              time={new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              from={msg.senderId === user?.id ? "me" : "them"}
+            />
+          ))}
+      </div>
+
+      <ChatInput
+        onSend={(text) => {
+          if (tab === "direct") onSendMessage?.(text)
+          else onSendGroupMessage?.(text)
+        }}
+        placeholder={tab === "groups" ? "Type a group message..." : "Type a message..."}
+      />
     </section>
   )
 }
@@ -78,27 +126,13 @@ function DesktopConversation() {
 export default function ChatsPage() {
   const { user, accessToken } = useAuthStore()
   const tokenValid = !!(accessToken && !isTokenExpired(accessToken))
-  const [tab, setTab] = useState<"direct" | "groups">("direct")
+  const [tab, setTab] = useState<TabType>("direct")
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
 
   const { data: convData } = useConversations(tokenValid)
   const conversations = convData?.data ?? []
-
-  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
-
-  const onPresenceOnline = useCallback(({ userId }: { userId: string }) => {
-    setOnlineUsers((prev) => new Set(prev).add(userId))
-  }, [])
-
-  const onPresenceOffline = useCallback(({ userId }: { userId: string }) => {
-    setOnlineUsers((prev) => {
-      const next = new Set(prev)
-      next.delete(userId)
-      return next
-    })
-  }, [])
-
-  useMessagingSocket(tokenValid, { onPresenceOnline, onPresenceOffline })
 
   const enrichedConversations = conversations.map((conv) => {
     const other = conv.participantA.id === user?.id ? conv.participantB : conv.participantA
@@ -118,6 +152,41 @@ export default function ChatsPage() {
 
   const selectedConv = enrichedConversations.find((c) => c.id === selectedChatId) ?? enrichedConversations[0]
 
+  // ── Direct messaging socket ──
+  const onPresenceOnline = useCallback(({ userId }: { userId: string }) => {
+    setOnlineUsers((prev) => new Set(prev).add(userId))
+  }, [])
+
+  const onPresenceOffline = useCallback(({ userId }: { userId: string }) => {
+    setOnlineUsers((prev) => {
+      const next = new Set(prev)
+      next.delete(userId)
+      return next
+    })
+  }, [])
+
+  const { sendMessage: sendDm } = useMessagingSocket(tokenValid, {
+    onPresenceOnline,
+    onPresenceOffline,
+  })
+
+  const handleSendDm = useCallback(
+    (text: string) => {
+      if (selectedChatId) sendDm({ conversationId: selectedChatId, body: text })
+    },
+    [selectedChatId, sendDm],
+  )
+
+  // ── Group socket ──
+  const { sendMessage: sendGroupMessage } = useGroupSocket(tokenValid, {})
+
+  const handleSendGroup = useCallback(
+    (text: string) => {
+      if (selectedGroupId) sendGroupMessage({ groupId: selectedGroupId, body: text })
+    },
+    [selectedGroupId, sendGroupMessage],
+  )
+
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
       <header className="flex shrink-0 items-center justify-between px-4 py-3 lg:hidden">
@@ -132,20 +201,33 @@ export default function ChatsPage() {
 
       <div className="mx-4 mb-3 flex shrink-0 rounded-full bg-muted p-1 lg:hidden">
         {(["direct", "groups"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 rounded-full py-1.5 text-sm font-semibold capitalize transition-colors ${tab === t ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"}`}>
+          <button
+            key={t}
+            onClick={() => {
+              setTab(t)
+              setSelectedChatId(null)
+              setSelectedGroupId(null)
+            }}
+            className={`flex-1 rounded-full py-1.5 text-sm font-semibold capitalize transition-colors ${
+              tab === t ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"
+            }`}
+          >
             {t === "direct" ? "Direct" : "Groups"}
           </button>
         ))}
       </div>
 
       <div className="flex-1 overflow-y-auto pb-20 lg:hidden">
-        {tab === "direct" && enrichedConversations.map((chat) => (
-          <ChatListItem key={chat.id} {...chat} href={`/chats/${chat.id}`} />
-        ))}
+        {tab === "direct" &&
+          enrichedConversations.map((chat) => (
+            <ChatListItem key={chat.id} {...chat} href={`/chats/${chat.id}`} />
+          ))}
         {tab === "groups" && (
-          <div className="flex justify-center py-8">
-            <p className="text-sm text-muted-foreground">Group chat coming soon</p>
+          <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
+            <Users size={40} className="text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              {user?.role === "Church Owner" ? "Create your first group" : "No groups yet"}
+            </p>
           </div>
         )}
       </div>
@@ -159,8 +241,10 @@ export default function ChatsPage() {
                 <p className="text-xs text-muted-foreground">Direct and ministry group chats</p>
               </div>
               {user?.role === "Church Owner" && (
-                <Link href="/chats/new-group"
-                  className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                <Link
+                  href="/chats/new-group"
+                  className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"
+                >
                   <CirclePlus size={20} />
                 </Link>
               )}
@@ -168,8 +252,17 @@ export default function ChatsPage() {
 
             <div className="mt-4 flex rounded-xl bg-muted p-1">
               {(["direct", "groups"] as const).map((t) => (
-                <button key={t} onClick={() => setTab(t)}
-                  className={`flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-colors ${tab === t ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                <button
+                  key={t}
+                  onClick={() => {
+                    setTab(t)
+                    setSelectedChatId(null)
+                    setSelectedGroupId(null)
+                  }}
+                  className={`flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-colors ${
+                    tab === t ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
                   {t === "direct" ? "Direct" : "Groups"}
                 </button>
               ))}
@@ -185,34 +278,56 @@ export default function ChatsPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {tab === "direct" && enrichedConversations.map((chat) => (
-              <ChatListItem
-                key={chat.id}
-                {...chat}
-                active={chat.id === (selectedConv?.id ?? chat.id)}
-                onSelect={() => setSelectedChatId(chat.id)}
-              />
-            ))}
+            {tab === "direct" &&
+              (enrichedConversations.length === 0 ? (
+                <div className="flex justify-center py-8 px-4">
+                  <p className="text-sm text-muted-foreground">No conversations yet</p>
+                </div>
+              ) : (
+                enrichedConversations.map((chat) => (
+                  <ChatListItem
+                    key={chat.id}
+                    {...chat}
+                    active={chat.id === selectedChatId}
+                    onSelect={() => setSelectedChatId(chat.id)}
+                  />
+                ))
+              ))}
             {tab === "groups" && (
-              <div className="flex justify-center py-8 px-4">
-                <p className="text-sm text-muted-foreground">Group chat coming soon</p>
+              <div className="flex flex-col items-center justify-center gap-3 py-12 px-4">
+                <Users size={40} className="text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">Select a group or create a new one</p>
               </div>
             )}
           </div>
         </aside>
 
-        {selectedConv ? (
-          <DesktopConversation />
+        {tab === "direct" && selectedConv ? (
+          <DesktopConversation
+            tab="direct"
+            conversationId={selectedConv.id}
+            onSendMessage={handleSendDm}
+          />
+        ) : tab === "groups" && selectedGroupId ? (
+          <DesktopConversation
+            tab="groups"
+            groupId={selectedGroupId}
+            onSendGroupMessage={handleSendGroup}
+          />
         ) : (
           <div className="flex flex-1 items-center justify-center">
-            <p className="text-sm text-muted-foreground">Select a conversation</p>
+            <p className="text-sm text-muted-foreground">
+              {tab === "direct" ? "Select a conversation" : "Select or create a group"}
+            </p>
           </div>
         )}
       </div>
 
       {user?.role === "Church Owner" && (
-        <Link href="/chats/new-group"
-          className="absolute bottom-4 right-4 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg lg:hidden">
+        <Link
+          href="/chats/new-group"
+          className="absolute bottom-4 right-4 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg lg:hidden"
+        >
           <CirclePlus size={28} />
         </Link>
       )}

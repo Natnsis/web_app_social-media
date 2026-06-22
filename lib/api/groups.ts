@@ -4,10 +4,15 @@ import type {
   GroupCommentsResponse,
   CreateGroupPayload,
   CreateGroupResponse,
+  GroupsResponse,
 } from "@/types"
 
 function token() {
   return useAuthStore.getState().accessToken ?? undefined
+}
+
+export function apiGetGroups() {
+  return get<GroupsResponse>("/v1/groups", token())
 }
 
 export function apiGetGroupComments(groupId: string, skip = 0, take = 30) {

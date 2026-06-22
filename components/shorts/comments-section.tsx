@@ -1,16 +1,15 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import Link from "next/link"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { EmojiPicker } from "@/components/emoji-picker"
+import { useAuthStore } from "@/lib/store/auth"
 import {
   useShortComments,
   useCreateShortComment,
-  useDeleteShortComment,
   useCommentReplies,
-  useReplyToComment,
-  useDeleteComment,
   useToggleCommentLike,
 } from "@/hooks/use-shorts"
 import { Heart as HeartSolid } from "nasicon-react/solid"
@@ -46,11 +45,14 @@ function CommentRow({
   onReply: (id: string, name: string) => void
   replyingTo: string | null
 }) {
+  const authorName = comment.author?.name ?? "Unknown"
+  const authorInitials = comment.author?.initials ?? authorName.slice(0, 2).toUpperCase()
+  const replyCount = comment._count?.replies ?? 0
+  const initialLikes = comment._count?.likes ?? 0
   const [liked, setLiked] = useState(false)
-  const [likeCount, setLikeCount] = useState(0)
+  const [likeCount, setLikeCount] = useState(initialLikes)
   const [showReplies, setShowReplies] = useState(false)
   const toggleCommentLike = useToggleCommentLike()
-  const deleteComment = useDeleteComment()
   const { data: repliesData, isLoading: repliesLoading } = useCommentReplies(
     showReplies ? comment.id : ""
   )
@@ -70,15 +72,15 @@ function CommentRow({
       <div className={`flex gap-2.5 ${isReply ? "bg-primary/5 -mx-3 rounded-xl px-3 py-2" : ""}`}>
         <Avatar size="sm" className="mt-0.5 shrink-0">
           <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">
-            {comment.author.initials || comment.author.name.slice(0, 2).toUpperCase()}
+            {authorInitials}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <p className="text-xs font-semibold">{comment.author.name}</p>
-            <p className="text-[10px] text-muted-foreground">{timeAgo(comment.createdAt)}</p>
+            <p className="text-xs font-semibold">{authorName}</p>
+            <p className="text-[10px] text-muted-foreground">{timeAgo(comment.createdAt ?? "")}</p>
           </div>
-          <p className="text-sm text-foreground">{comment.body}</p>
+          <p className="text-sm text-foreground">{comment.body ?? ""}</p>
           <div className="mt-1 flex items-center gap-3">
             <button
               onClick={handleLike}
@@ -88,17 +90,17 @@ function CommentRow({
               <span>{formatCount(likeCount)}</span>
             </button>
             <button
-              onClick={() => onReply(comment.id, comment.author.name)}
+              onClick={() => onReply(comment.id, authorName)}
               className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Reply
             </button>
-            {comment._count.replies > 0 && !showReplies && (
+            {replyCount > 0 && !showReplies && (
               <button
                 onClick={() => setShowReplies(true)}
                 className="text-xs font-medium text-primary"
               >
-                View {comment._count.replies} {comment._count.replies === 1 ? "reply" : "replies"}
+                View {replyCount} {replyCount === 1 ? "reply" : "replies"}
               </button>
             )}
           </div>
@@ -135,6 +137,7 @@ interface CommentsSectionProps {
 }
 
 export function CommentsSection({ shortId, onClose }: CommentsSectionProps) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const [input, setInput] = useState("")
   const [showEmoji, setShowEmoji] = useState(false)
   const [replyTarget, setReplyTarget] = useState<{ id: string; name: string } | null>(null)
@@ -143,7 +146,6 @@ export function CommentsSection({ shortId, onClose }: CommentsSectionProps) {
 
   const { data, isLoading, isError, refetch } = useShortComments(shortId)
   const createComment = useCreateShortComment(shortId)
-  const deleteShortComment = useDeleteShortComment(shortId)
 
   const comments = data?.data ?? []
   const totalComments = comments.length
@@ -269,58 +271,71 @@ export function CommentsSection({ shortId, onClose }: CommentsSectionProps) {
 
       {/* Input bar */}
       <div className="shrink-0 border-t border-border bg-background">
-        {replyTarget && (
-          <div className="flex items-center justify-between bg-primary/5 px-4 py-1.5">
-            <p className="text-xs text-muted-foreground">
-              Replying to <span className="font-semibold text-foreground">@{replyTarget.name}</span>
+        {isAuthenticated ? (
+          <>
+            {replyTarget && (
+              <div className="flex items-center justify-between bg-primary/5 px-4 py-1.5">
+                <p className="text-xs text-muted-foreground">
+                  Replying to <span className="font-semibold text-foreground">@{replyTarget.name}</span>
+                </p>
+                <button onClick={cancelReply} className="text-muted-foreground hover:text-foreground">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            <div className="flex items-center gap-2 px-4 py-3">
+              <Avatar size="sm" className="shrink-0">
+                <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
+                  Y
+                </AvatarFallback>
+              </Avatar>
+              <div className="relative flex flex-1 items-center">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={replyTarget ? "Write a reply..." : "Add a comment..."}
+                  className="h-9 w-full rounded-full bg-muted px-4 pr-10 text-sm outline-none placeholder:text-muted-foreground/60"
+                />
+                <button
+                  onClick={() => setShowEmoji((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                    <line x1="9" y1="9" x2="9.01" y2="9" />
+                    <line x1="15" y1="9" x2="15.01" y2="9" />
+                  </svg>
+                </button>
+              </div>
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() || createComment.isPending}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity disabled:opacity-40"
+              >
+                {createComment.isPending ? (
+                  <div className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : (
+                  <Send size={16} />
+                )}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="px-4 py-3 text-center">
+            <p className="text-sm text-muted-foreground">
+              <Link href="/login" className="font-semibold text-primary hover:underline">
+                Sign in
+              </Link>{" "}
+              to add a comment
             </p>
-            <button onClick={cancelReply} className="text-muted-foreground hover:text-foreground">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
           </div>
         )}
-        <div className="flex items-center gap-2 px-4 py-3">
-          <Avatar size="sm" className="shrink-0">
-            <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-bold">
-              Y
-            </AvatarFallback>
-          </Avatar>
-          <div className="relative flex flex-1 items-center">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={replyTarget ? "Write a reply..." : "Add a comment..."}
-              className="h-9 w-full rounded-full bg-muted px-4 pr-10 text-sm outline-none placeholder:text-muted-foreground/60"
-            />
-            <button
-              onClick={() => setShowEmoji((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                <line x1="9" y1="9" x2="9.01" y2="9" />
-                <line x1="15" y1="9" x2="15.01" y2="9" />
-              </svg>
-            </button>
-          </div>
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || createComment.isPending}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity disabled:opacity-40"
-          >
-            {createComment.isPending ? (
-              <div className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-            ) : (
-              <Send size={16} />
-            )}
-          </button>
-        </div>
       </div>
     </div>
   )
