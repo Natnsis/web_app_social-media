@@ -5,7 +5,6 @@ import type {
   ConversationMessagesResponse,
   UnreadCountResponse,
   BlocksResponse,
-  MediaUploadResponse,
 } from "@/types"
 
 function token() {
@@ -24,10 +23,19 @@ export function apiGetUnreadCount() {
   return get<UnreadCountResponse>("/v1/messaging/unread-count", token())
 }
 
-export function apiUploadMedia(file: File) {
+export function apiSendMessage(conversationId: string, body: string, file?: File) {
   const fd = new FormData()
-  fd.append("file", file)
-  return postFormData<MediaUploadResponse>("/v1/messaging/media", fd, token())
+  fd.append("conversationId", conversationId)
+  fd.append("body", body)
+  if (file) fd.append("file", file)
+  return postFormData<{ success: boolean; data: unknown }>("/v1/messaging/conversations", fd, token())
+}
+
+export function apiSendGroupComment(groupId: string, body: string, file?: File) {
+  const fd = new FormData()
+  fd.append("body", body)
+  if (file) fd.append("file", file)
+  return postFormData<{ success: boolean; data: unknown }>(`/v1/groups/${groupId}/comments`, fd, token())
 }
 
 export function apiDeleteMessage(messageId: string) {

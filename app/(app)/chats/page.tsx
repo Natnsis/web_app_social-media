@@ -1,176 +1,28 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState } from "react"
 import Link from "next/link"
-import { useAuthStore, isTokenExpired } from "@/lib/store/auth"
-import { useConversations, useConversation, useUnreadCount } from "@/hooks/use-conversations"
-import { useGroups, useGroupComments } from "@/hooks/use-groups"
-import { useMessagingSocket } from "@/hooks/use-messaging-socket"
-import { useGroupSocket } from "@/hooks/use-group-socket"
-import { getSocket } from "@/lib/socket"
-import { apiDeleteMessage } from "@/lib/api/messaging"
+import { useAuthStore } from "@/lib/store/auth"
+import { useConversations, useUnreadCount } from "@/hooks/use-conversations"
+import { useGroups } from "@/hooks/use-groups"
 import { ChatListItem } from "@/components/chat/chat-list-item"
-import { ChatConversation } from "@/components/chat/chat-conversation"
+import { ChatThread } from "@/components/chat/chat-thread"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { CirclePlus, Search, Users } from "nasicon-react/outline"
-import type { MessageEvent } from "@/types"
 
 type TabType = "direct" | "groups"
-
-function DesktopConversation({
-  tab,
-  conversationId,
-  groupId,
-  otherParticipant,
-  onSendMessage,
-  onSendGroupMessage,
-  onSendRead,
-  currentUserId,
-}: {
-  tab: TabType
-  conversationId?: string
-  groupId?: string
-  otherParticipant?: { fullName: string; initials: string; isOnline: boolean; lastSeenText: string | null } | null
-  onSendMessage?: (text: string, mediaUrl?: string) => void
-  onSendGroupMessage?: (text: string, mediaUrl?: string) => void
-  onSendRead?: (conversationId: string) => void
-  currentUserId?: string
-}) {
-  const { user } = useAuthStore()
-
-  // ── Direct messages ──
-
-  const [dmMessages, setDmMessages] = useState<MessageEvent[]>([])
-  const [dmTypingUserId, setDmTypingUserId] = useState<string | null>(null)
-
-  const { data: convDetail, isLoading: convLoading } = useConversation(
-    tab === "direct" ? conversationId ?? null : null,
-  )
-
-  const messages = convDetail?.data?.messages ?? null
-
-  const prevConvIdRef = useRef<string | null>(null)
-
-  // Seed dmMessages from API when conversationId changes (first load only)
-  useEffect(() => {
-    if (tab !== "direct" || !conversationId || !Array.isArray(messages)) return
-    if (prevConvIdRef.current !== conversationId) {
-      prevConvIdRef.current = conversationId
-      setDmMessages(Array.isArray(messages) ? messages : [])
-      setDmTypingUserId(null)
-    }
-  }, [conversationId, tab, messages])
-
-  // Socket listeners for real-time DM updates
-  useEffect(() => {
-    if (tab !== "direct" || !conversationId) return
-    const socket = getSocket("/messaging")
-    if (!socket) return
-
-    const onNew = (msg: MessageEvent) => {
-      if (msg.conversationId === conversationId) {
-        setDmMessages((prev) => [...prev, msg])
-      }
-    }
-    const onUpdated = (msg: MessageEvent) => {
-      if (msg.conversationId === conversationId) {
-        setDmMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)))
-      }
-    }
-    const onDeleted = ({ conversationId: cId, messageId }: { conversationId: string; messageId: string }) => {
-      if (cId === conversationId) {
-        setDmMessages((prev) => prev.filter((m) => m.id !== messageId))
-      }
-    }
-    const onTypingStart = ({ conversationId: cId, userId }: { conversationId: string; userId: string }) => {
-      if (cId === conversationId && userId !== user?.id) setDmTypingUserId(userId)
-    }
-    const onTypingStop = ({ conversationId: cId }: { conversationId: string }) => {
-      if (cId === conversationId) setDmTypingUserId(null)
-    }
-
-    socket.on("message:new", onNew)
-    socket.on("message:updated", onUpdated)
-    socket.on("message:deleted", onDeleted)
-    socket.on("typing:start", onTypingStart)
-    socket.on("typing:stop", onTypingStop)
-
-    onSendRead?.(conversationId)
-
-    return () => {
-      socket.off("message:new", onNew)
-      socket.off("message:updated", onUpdated)
-      socket.off("message:deleted", onDeleted)
-      socket.off("typing:start", onTypingStart)
-      socket.off("typing:stop", onTypingStop)
-    }
-  }, [conversationId, tab, user?.id, onSendRead])
-
-  // ── Group messages ──
-
-  const {
-    data: groupCommentsData,
-    isLoading: groupCommentsLoading,
-  } = useGroupComments(tab === "groups" ? groupId ?? null : null)
-
-  const groupMessages = Array.isArray(groupCommentsData)
-    ? groupCommentsData
-    : Array.isArray(groupCommentsData?.data)
-      ? groupCommentsData.data
-      : []
-
-  const chatMsgs = tab === "direct" ? dmMessages : groupMessages
-
-  const handleDeleteMessage = useCallback((messageId: string) => {
-    apiDeleteMessage(messageId).catch(() => {})
-    if (tab === "direct") {
-      setDmMessages((prev) => prev.filter((m) => m.id !== messageId))
-    }
-  }, [tab])
-
-  return (
-    <ChatConversation
-      messages={chatMsgs}
-      loading={tab === "direct" ? convLoading : groupCommentsLoading}
-      error={false}
-      onSend={(text, mediaUrl) => {
-        if (tab === "direct") onSendMessage?.(text, mediaUrl)
-        else onSendGroupMessage?.(text, mediaUrl)
-      }}
-      typingUserId={tab === "direct" ? dmTypingUserId : null}
-      headerName={tab === "direct" ? otherParticipant?.fullName : undefined}
-      headerInitials={tab === "direct" ? otherParticipant?.initials : tab === "groups" ? "G" : undefined}
-      headerOnline={otherParticipant?.isOnline}
-      headerStatusText={
-        tab === "direct"
-          ? otherParticipant?.isOnline
-            ? "Active now"
-            : otherParticipant?.lastSeenText ?? "Offline"
-          : "Group"
-      }
-      isGroup={tab === "groups"}
-      conversationId={conversationId}
-      currentUserId={user?.id}
-      onDeleteMessage={handleDeleteMessage}
-    />
-  )
-}
 
 export default function ChatsPage() {
   const { user } = useAuthStore()
   const [tab, setTab] = useState<TabType>("direct")
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
-  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
 
   const { data: convData, isLoading: convsLoading, isError: convsError } = useConversations()
   const { data: groupsData, isLoading: groupsLoading, isError: groupsError } = useGroups()
   const { data: unreadData } = useUnreadCount()
   const unreadCount = unreadData?.data?.count ?? 0
-  const { data: groupCommentsData, isLoading: groupCommentsLoading } = useGroupComments(
-    tab === "groups" ? selectedGroupId : null
-  )
 
   const conversations = convData?.data ?? []
   const groups = groupsData?.data ?? []
@@ -179,7 +31,7 @@ export default function ChatsPage() {
     const otherA = conv?.participantA
     const otherB = conv?.participantB
     const other = otherA?.id === user?.id ? otherB : otherA
-    const isOnline = other?.id ? (onlineUsers.has(other.id) || other?.isOnline) : false
+    const isOnline = !!other?.isOnline
     const msgs = conv?.messages
     const lastMsg = msgs && msgs.length > 0 ? msgs[msgs.length - 1] : null
     return {
@@ -202,49 +54,13 @@ export default function ChatsPage() {
         : null,
     }
   })
-  const selectedConv = enrichedConversations.length > 0
-    ? (enrichedConversations.find((c) => c.id === selectedChatId) ?? enrichedConversations[0])
+  const selectedConv = selectedChatId
+    ? enrichedConversations.find((c) => c.id === selectedChatId) ?? null
     : null
 
   const selectedGroup = groups.length > 0
     ? (groups.find((g) => g.id === selectedGroupId) ?? null)
     : null
-
-  const { isAuthenticated } = useAuthStore()
-
-  const onPresenceOnline = useCallback(({ userId }: { userId: string }) => {
-    setOnlineUsers((prev) => new Set(prev).add(userId))
-  }, [])
-
-  const onPresenceOffline = useCallback(({ userId }: { userId: string }) => {
-    setOnlineUsers((prev) => {
-      const next = new Set(prev)
-      next.delete(userId)
-      return next
-    })
-  }, [])
-
-  const { sendMessage: sendDm, sendRead } = useMessagingSocket(isAuthenticated, {
-    onPresenceOnline,
-    onPresenceOffline,
-  })
-
-  const handleSendDm = useCallback(
-    (text: string, mediaUrl?: string) => {
-      if (selectedConv?.id) sendDm({ conversationId: selectedConv.id, body: text, mediaUrl })
-    },
-    [selectedConv?.id, sendDm],
-  )
-
-  // ── Group socket ──
-  const { sendMessage: sendGroupMessage } = useGroupSocket(isAuthenticated, {})
-
-  const handleSendGroup = useCallback(
-    (text: string, mediaUrl?: string) => {
-      if (selectedGroup?.id) sendGroupMessage({ groupId: selectedGroup.id, body: text, mediaUrl })
-    },
-    [selectedGroup?.id, sendGroupMessage],
-  )
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden lg:flex-row lg:overflow-hidden">
@@ -332,7 +148,7 @@ export default function ChatsPage() {
 
       {/* Desktop split-pane — also visible on smaller screens via flex-col */}
       <div className="hidden h-full min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card lg:flex lg:flex-row">
-        <aside className="flex w-full shrink-0 flex-col border-r border-border bg-card lg:w-72 xl:w-80">
+        <aside className="flex w-full shrink-0 flex-col border-r border-border bg-card lg:w-80 xl:w-96">
           <div className="border-b border-border px-4 py-4">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -446,18 +262,24 @@ export default function ChatsPage() {
         </aside>
 
         {tab === "direct" && selectedConv ? (
-          <DesktopConversation
-            tab="direct"
-            conversationId={selectedConv.id}
-            otherParticipant={selectedConv.otherParticipant}
-            onSendMessage={handleSendDm}
-            onSendRead={sendRead}
+          <ChatThread
+            id={selectedConv.id}
+            initialHeaderName={selectedConv.otherParticipant?.fullName}
+            initialHeaderInitials={selectedConv.otherParticipant?.initials}
+            initialHeaderOnline={selectedConv.otherParticipant?.isOnline}
+            initialHeaderStatusText={
+              selectedConv.otherParticipant?.isOnline
+                ? "Active now"
+                : selectedConv.otherParticipant?.lastSeenText ?? "Offline"
+            }
           />
-        ) : tab === "groups" && selectedGroupId ? (
-          <DesktopConversation
-            tab="groups"
-            groupId={selectedGroupId}
-            onSendGroupMessage={handleSendGroup}
+        ) : tab === "groups" && selectedGroup ? (
+          <ChatThread
+            id={selectedGroup.id}
+            isGroup
+            initialHeaderName={selectedGroup.name ?? "Group"}
+            initialHeaderInitials={selectedGroup.name?.slice(0, 2).toUpperCase() ?? "G"}
+            initialHeaderStatusText="Group"
           />
         ) : (
           <div className="hidden flex-1 items-center justify-center lg:flex">

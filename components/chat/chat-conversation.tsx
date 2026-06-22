@@ -72,22 +72,24 @@ export function ChatConversation({
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || !conversationId) return
     setUploading(true)
     try {
-      const { apiUploadMedia } = await import("@/lib/api/messaging")
-      const res = await apiUploadMedia(file)
-      const mediaUrl = res.data?.url ?? ""
-      if (mediaUrl) {
-        onSend("", mediaUrl)
+      const { apiSendMessage, apiSendGroupComment } = await import("@/lib/api/messaging")
+      if (isGroup) {
+        await apiSendGroupComment(conversationId, inputValue, file)
+      } else {
+        await apiSendMessage(conversationId, inputValue, file)
       }
+      setInputValue("")
+      onTypingStop?.()
     } catch {
       console.error("Upload failed")
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
     }
-  }, [onSend])
+  }, [conversationId, isGroup, inputValue, onTypingStop, setInputValue])
 
   const handleSend = useCallback((text: string) => {
     onSend(text)

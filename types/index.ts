@@ -250,11 +250,6 @@ export interface UnreadCountResponse {
   data: { count: number }
 }
 
-export interface MediaUploadResponse {
-  success: boolean
-  data: { url: string }
-}
-
 export interface BlockedUser {
   id: string
   fullName: string
