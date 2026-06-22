@@ -1,26 +1,24 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback } from "react"
 import Link from "next/link"
 import { useAuthStore, isTokenExpired } from "@/lib/store/auth"
 import { useConversations } from "@/hooks/use-conversations"
-import { useGroups } from "@/hooks/use-groups"
+import { useGroups, useGroupComments } from "@/hooks/use-groups"
 import { useMessagingSocket } from "@/hooks/use-messaging-socket"
 import { useGroupSocket } from "@/hooks/use-group-socket"
-import { apiGetGroupComments } from "@/lib/api/groups"
 import { ChatListItem } from "@/components/chat/chat-list-item"
 import { MessageBubble } from "@/components/chat/message-bubble"
 import { ChatInput } from "@/components/chat/chat-input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { CirclePlus, CircleInformation, Search, Users } from "nasicon-react/outline"
-import type { MessageEvent, GroupComment } from "@/types"
+import type { MessageEvent } from "@/types"
 
 type TabType = "direct" | "groups"
 
 function DesktopConversation({
   tab,
-  conversationId,
   groupId,
   onSendMessage,
   onSendGroupMessage,
@@ -33,23 +31,18 @@ function DesktopConversation({
 }) {
   const { user } = useAuthStore()
   const [dmMessages, setDmMessages] = useState<MessageEvent[]>([])
-  const [groupMessages, setGroupMessages] = useState<GroupComment[]>([])
-  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (tab === "groups" && groupId) {
-      setLoading(true)
-      apiGetGroupComments(groupId)
-        .then((res) => {
-          setGroupMessages(res.data ?? [])
-          setLoading(false)
-        })
-        .catch(() => {
-          setGroupMessages([])
-          setLoading(false)
-        })
-    }
-  }, [tab, groupId])
+  const {
+    data: groupCommentsData,
+    isLoading: groupCommentsLoading,
+  } = useGroupComments(tab === "groups" ? groupId ?? null : null)
+
+  // Handle both direct array response and wrapped { data: [...] } response
+  const groupMessages = Array.isArray(groupCommentsData)
+    ? groupCommentsData
+    : Array.isArray(groupCommentsData?.data)
+      ? groupCommentsData.data
+      : []
 
   return (
     <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
@@ -73,13 +66,13 @@ function DesktopConversation({
       </header>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-6 py-5">
-        {loading && (
+        {groupCommentsLoading && tab === "groups" && (
           <div className="flex justify-center py-8">
             <p className="text-sm text-muted-foreground">Loading messages...</p>
           </div>
         )}
 
-        {!loading && tab === "direct" && dmMessages.length === 0 && (
+        {!groupCommentsLoading && tab === "direct" && dmMessages.length === 0 && (
           <div className="flex h-full items-center justify-center">
             <p className="text-sm text-muted-foreground">No messages yet</p>
           </div>
@@ -96,7 +89,7 @@ function DesktopConversation({
             />
           ))}
 
-        {!loading && tab === "groups" && groupMessages.length === 0 && (
+        {!groupCommentsLoading && tab === "groups" && groupMessages.length === 0 && (
           <div className="flex h-full items-center justify-center">
             <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
           </div>
@@ -125,23 +118,17 @@ function DesktopConversation({
 }
 
 export default function ChatsPage() {
-  const { user, accessToken } = useAuthStore()
-  const tokenValid = !!(accessToken && !isTokenExpired(accessToken))
+  const { user } = useAuthStore()
   const [tab, setTab] = useState<TabType>("direct")
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
 
-  const {
-    data: convData,
-    isLoading: convsLoading,
-    isError: convsError,
-  } = useConversations(tokenValid)
-  const {
-    data: groupsData,
-    isLoading: groupsLoading,
-    isError: groupsError,
-  } = useGroups(tokenValid)
+  const { data: convData, isLoading: convsLoading, isError: convsError } = useConversations()
+  const { data: groupsData, isLoading: groupsLoading, isError: groupsError } = useGroups()
+  const { data: groupCommentsData, isLoading: groupCommentsLoading } = useGroupComments(
+    tab === "groups" ? selectedGroupId : null
+  )
 
   const conversations = convData?.data ?? []
   const groups = groupsData?.data ?? []
@@ -151,7 +138,8 @@ export default function ChatsPage() {
     const otherB = conv?.participantB
     const other = otherA?.id === user?.id ? otherB : otherA
     const isOnline = other?.id ? (onlineUsers.has(other.id) || other?.isOnline) : false
-    const lastMsg = conv?.messages?.[conv.messages.length - 1]
+    const msgs = conv?.messages
+    const lastMsg = msgs && msgs.length > 0 ? msgs[msgs.length - 1] : null
     return {
       id: conv?.id ?? "",
       name: other?.fullName || "Unknown",
@@ -164,10 +152,12 @@ export default function ChatsPage() {
       online: isOnline,
     }
   })
+  const selectedConv = enrichedConversations.length > 0
+    ? (enrichedConversations.find((c) => c.id === selectedChatId) ?? enrichedConversations[0])
+    : null
 
-  const selectedConv = enrichedConversations.find((c) => c.id === selectedChatId) ?? enrichedConversations[0]
+  const { isAuthenticated } = useAuthStore()
 
-  // ── Direct messaging socket ──
   const onPresenceOnline = useCallback(({ userId }: { userId: string }) => {
     setOnlineUsers((prev) => new Set(prev).add(userId))
   }, [])
@@ -180,7 +170,7 @@ export default function ChatsPage() {
     })
   }, [])
 
-  const { sendMessage: sendDm } = useMessagingSocket(tokenValid, {
+  const { sendMessage: sendDm } = useMessagingSocket(isAuthenticated, {
     onPresenceOnline,
     onPresenceOffline,
   })
@@ -193,7 +183,7 @@ export default function ChatsPage() {
   )
 
   // ── Group socket ──
-  const { sendMessage: sendGroupMessage } = useGroupSocket(tokenValid, {})
+  const { sendMessage: sendGroupMessage } = useGroupSocket(isAuthenticated, {})
 
   const handleSendGroup = useCallback(
     (text: string) => {
@@ -277,7 +267,7 @@ export default function ChatsPage() {
                   })
                   : ""
               }
-              lastMsg={`${group?._count?.members ?? 0} members`}
+              lastMsg={`${group?._count?.comments ?? 0} messages · ${group?.church?.name ?? ""}`}
               unread={0}
               online={false}
               href={`/chats/${group?.id}`}
@@ -379,7 +369,7 @@ export default function ChatsPage() {
                       })
                       : ""
                   }
-                  lastMsg={`${group?._count?.members ?? 0} members`}
+                  lastMsg={`${group?._count?.comments ?? 0} messages · ${group?.church?.name ?? ""}`}
                   unread={0}
                   online={false}
                   active={group?.id === selectedGroupId}
