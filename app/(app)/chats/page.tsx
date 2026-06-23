@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useAuthStore } from "@/lib/store/auth"
-import { useConversations, useUnreadCount } from "@/hooks/use-conversations"
+import { useConversations } from "@/hooks/use-conversations"
 import { useGroups } from "@/hooks/use-groups"
 import { ChatListItem } from "@/components/chat/chat-list-item"
 import { ChatThread } from "@/components/chat/chat-thread"
@@ -10,6 +10,8 @@ import { CreateGroupDialog } from "@/components/create-group-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { CirclePlus, Search, Users } from "nasicon-react/outline"
+import { Settings } from "lucide-react"
+import type { MinimalGroup } from "@/types"
 
 type TabType = "direct" | "groups"
 
@@ -35,12 +37,10 @@ export default function ChatsPage() {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [groupDialogOpen, setGroupDialogOpen] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<MinimalGroup | null>(null)
 
   const { data: convData, isLoading: convsLoading, isError: convsError } = useConversations()
   const { data: groupsData, isLoading: groupsLoading, isError: groupsError } = useGroups()
-  const { data: unreadData } = useUnreadCount()
-  const unreadCount = unreadData?.data?.count ?? 0
-
   const conversations = convData?.data ?? []
   const groups = groupsData?.data ?? []
 
@@ -66,6 +66,9 @@ export default function ChatsPage() {
     const isOnline = !!other?.isOnline
     const msgs = conv?.messages
     const lastMsg = msgs && msgs.length > 0 ? msgs[msgs.length - 1] : null
+    const unread = conv?.unreadCount ?? (msgs
+      ? msgs.filter((m) => m.senderId !== user?.id && !m.isRead).length
+      : 0)
     return {
       id: conv?.id ?? "",
       name: other?.fullName || "Unknown",
@@ -74,7 +77,7 @@ export default function ChatsPage() {
         ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         : "",
       lastMsg: lastMsg?.body ?? "Start a conversation",
-      unread: 0,
+      unread,
       online: isOnline,
       otherParticipant: other
         ? {
@@ -157,24 +160,37 @@ export default function ChatsPage() {
         )}
         {tab === "groups" &&
           groups.map((group) => (
-            <ChatListItem
-              key={group?.id}
-              id={group?.id ?? ""}
-              name={group?.name ?? "Group"}
-              initials={group?.name?.slice(0, 2).toUpperCase() ?? "G"}
-              time={
-                group?.updatedAt
-                  ? new Date(group.updatedAt).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                  : ""
-              }
-              lastMsg={`${group?._count?.comments ?? 0} messages · ${group?.church?.name ?? ""}`}
-              unread={0}
-              online={false}
-              href={`/chats/${group?.id}?type=group`}
-            />
+            <div key={group?.id} className="group relative">
+              <ChatListItem
+                id={group?.id ?? ""}
+                name={group?.name ?? "Group"}
+                initials={group?.name?.slice(0, 2).toUpperCase() ?? "G"}
+                time={
+                  group?.updatedAt
+                    ? new Date(group.updatedAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                    : ""
+                }
+                lastMsg={`${group?._count?.comments ?? 0} messages · ${group?.church?.name ?? ""}`}
+                unread={0}
+                online={false}
+                href={`/chats/${group?.id}?type=group`}
+              />
+              {user?.role === "Church Owner" && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setEditingGroup(group)
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-lg text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                >
+                  <Settings size={14} />
+                </button>
+              )}
+            </div>
           ))}
       </div>
 
@@ -188,11 +204,6 @@ export default function ChatsPage() {
                 <p className="text-xs text-muted-foreground">Direct and ministry group chats</p>
               </div>
               <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
-                  <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
-                    {unreadCount}
-                  </span>
-                )}
                 {user?.role === "Church Owner" && (
                   <button
                     onClick={() => setGroupDialogOpen(true)}
@@ -267,28 +278,40 @@ export default function ChatsPage() {
             )}
             {tab === "groups" &&
               groups.map((group) => (
-                <ChatListItem
-                  key={group?.id}
-                  id={group?.id ?? ""}
-                  name={group?.name ?? "Group"}
-                  initials={group?.name?.slice(0, 2).toUpperCase() ?? "G"}
-                  time={
-                    group?.updatedAt
-                      ? new Date(group.updatedAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                      : ""
-                  }
-                  lastMsg={`${group?._count?.comments ?? 0} messages · ${group?.church?.name ?? ""}`}
-                  unread={0}
-                  online={false}
-                  active={group?.id === selectedGroupId}
-                  onSelect={() => {
-                    setSelectedGroupId(group?.id)
-                    setSelectedChatId(null)
-                  }}
-                />
+                <div key={group?.id} className="group relative">
+                  <ChatListItem
+                    id={group?.id ?? ""}
+                    name={group?.name ?? "Group"}
+                    initials={group?.name?.slice(0, 2).toUpperCase() ?? "G"}
+                    time={
+                      group?.updatedAt
+                        ? new Date(group.updatedAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                        : ""
+                    }
+                    lastMsg={`${group?._count?.comments ?? 0} messages · ${group?.church?.name ?? ""}`}
+                    unread={0}
+                    online={false}
+                    active={group?.id === selectedGroupId}
+                    onSelect={() => {
+                      setSelectedGroupId(group?.id)
+                      setSelectedChatId(null)
+                    }}
+                  />
+                  {user?.role === "Church Owner" && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingGroup(group)
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-lg text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                    >
+                      <Settings size={14} />
+                    </button>
+                  )}
+                </div>
               ))}
           </div>
         </aside>
@@ -335,6 +358,17 @@ export default function ChatsPage() {
         open={groupDialogOpen}
         onOpenChange={setGroupDialogOpen}
       />
+
+      {editingGroup && (
+        <CreateGroupDialog
+          key={editingGroup.id}
+          open={!!editingGroup}
+          onOpenChange={(open) => {
+            if (!open) setEditingGroup(null)
+          }}
+          group={editingGroup}
+        />
+      )}
     </div>
   )
 }

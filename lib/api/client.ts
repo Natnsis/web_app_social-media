@@ -36,7 +36,7 @@ async function request<T>(
     if (!res.ok) {
       const errorMsg =
         data?.message || data?.error || responseText || `HTTP error! Status: ${res.status}`
-      console.error(`[API ERROR] ${method} ${path} failed with Status ${res.status}:`, {
+      console.warn(`[API ERROR] ${method} ${path} failed with Status ${res.status}:`, {
         url,
         status: res.status,
         statusText: res.statusText,
@@ -49,7 +49,7 @@ async function request<T>(
     console.log(`[API SUCCESS] ${method} ${path}:`, data)
     return data as T
   } catch (error: any) {
-    console.error(`[API NETWORK/UNKNOWN ERROR] ${method} ${path}:`, error)
+    console.warn(`[API NETWORK/UNKNOWN ERROR] ${method} ${path}:`, error)
     throw error
   }
 }
@@ -84,7 +84,7 @@ async function requestFormData<T>(
     if (!res.ok) {
       const errorMsg =
         data?.message || data?.error || responseText || `HTTP error! Status: ${res.status}`
-      console.error(`[API ERROR] ${method} ${path} failed with Status ${res.status}:`, {
+      console.warn(`[API ERROR] ${method} ${path} failed with Status ${res.status}:`, {
         url,
         status: res.status,
         statusText: res.statusText,
@@ -97,7 +97,7 @@ async function requestFormData<T>(
     console.log(`[API SUCCESS] ${method} ${path}:`, data)
     return data as T
   } catch (error: any) {
-    console.error(`[API NETWORK/UNKNOWN ERROR] ${method} ${path}:`, error)
+    console.warn(`[API NETWORK/UNKNOWN ERROR] ${method} ${path}:`, error)
     throw error
   }
 }

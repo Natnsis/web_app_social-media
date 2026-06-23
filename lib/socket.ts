@@ -42,7 +42,12 @@ export function connectNamespace(namespace: string): Socket | null {
     reconnectionAttempts: Infinity,
   })
 
+  socket.on("connect", () => {
+    console.log(`[socket] Connected to ${namespace} namespace (${socket.id})`)
+  })
+
   socket.on("connect_error", async (err) => {
+    console.error(`[socket] Connection error on ${namespace}:`, err.message)
     if (err.message === "WS_AUTH_FAILED") {
       const newToken = await refreshToken()
       if (newToken) {
@@ -52,7 +57,12 @@ export function connectNamespace(namespace: string): Socket | null {
     }
   })
 
+  socket.on("error", ({ event, message }: { event?: string; message?: string }) => {
+    console.error(`[socket] Error on ${namespace}${event ? ` (event: ${event})` : ""}:`, message)
+  })
+
   socket.on("disconnect", (reason) => {
+    console.log(`[socket] Disconnected from ${namespace}:`, reason)
     if (reason === "io server disconnect") {
       sockets.delete(namespace)
     }

@@ -19,7 +19,7 @@ export function apiGetGroups() {
 }
 
 export function apiGetGroupComments(groupId: string, skip = 0, take = 30) {
-  return get<GroupCommentsResponse>(`/v1/groups/${groupId}/comments?skip=${skip}&take=${take}`, token())
+  return get<GroupCommentsResponse>(`/v1/groups/${groupId}/groupmessages?skip=${skip}&take=${take}`, token())
 }
 
 export function apiCreateGroup(payload: CreateGroupPayload) {
@@ -40,4 +40,12 @@ export function apiDeleteGroup(id: string) {
 
 export function apiGetGroupMembers(id: string) {
   return get<GroupMembersResponse>(`/v1/groups/${id}/members`, token())
+}
+
+export function apiJoinGroup(id: string) {
+  return post<ApiResponse<{ id: string }>>(`/v1/groups/${id}/join`, undefined, token())
+}
+
+export function apiJoinGroupRequest(id: string) {
+  return post<ApiResponse<{ id: string }>>(`/v1/groups/${id}/join-requests`, undefined, token())
 }

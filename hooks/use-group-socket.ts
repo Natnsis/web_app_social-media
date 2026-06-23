@@ -53,6 +53,16 @@ export function useGroupSocket(enabled: boolean, options: UseGroupSocketOptions)
     const onPresenceOnline = (event: PresenceOnlineEvent) => optionsRef.current.onPresenceOnline?.(event)
     const onPresenceOffline = (event: PresenceOfflineEvent) => optionsRef.current.onPresenceOffline?.(event)
 
+    socket.on("connect", () => {
+      console.log("[useGroupSocket] Connected to /groups namespace")
+    })
+    socket.on("disconnect", (reason) => {
+      console.warn("[useGroupSocket] Disconnected from /groups namespace:", reason)
+    })
+    socket.on("connect_error", (err) => {
+      console.error("[useGroupSocket] Connection error:", err.message)
+    })
+
     socket.on("group:message:new", onMessageNew)
     socket.on("group:message:reply", onMessageReply)
     socket.on("group:message:updated", onMessageUpdated)
@@ -66,6 +76,9 @@ export function useGroupSocket(enabled: boolean, options: UseGroupSocketOptions)
     socket.on("presence:offline", onPresenceOffline)
 
     return () => {
+      socket.off("connect")
+      socket.off("disconnect")
+      socket.off("connect_error")
       socket.off("group:message:new", onMessageNew)
       socket.off("group:message:reply", onMessageReply)
       socket.off("group:message:updated", onMessageUpdated)
@@ -82,20 +95,32 @@ export function useGroupSocket(enabled: boolean, options: UseGroupSocketOptions)
     }
   }, [enabled])
 
+  function emitSafe(event: string, ...args: unknown[]) {
+    const socket = socketRef.current
+    if (!socket) {
+      console.warn(`[useGroupSocket] Cannot emit "${event}" — socket not connected`)
+      return
+    }
+    if (!socket.connected) {
+      console.warn(`[useGroupSocket] Socket not connected, emit "${event}" may be lost`)
+    }
+    socket.emit(event, ...args)
+  }
+
   const sendMessage = useCallback((payload: { groupId: string; body: string; mediaUrl?: string }) => {
-    socketRef.current?.emit("group:message:send", payload)
+    emitSafe("group:message:send", payload)
   }, [])
 
   const sendRead = useCallback((payload: { groupId: string; messageId: string }) => {
-    socketRef.current?.emit("group:message:read", payload)
+    emitSafe("group:message:read", payload)
   }, [])
 
   const startTyping = useCallback((groupId: string) => {
-    socketRef.current?.emit("group:typing:start", { groupId })
+    emitSafe("group:typing:start", { groupId })
   }, [])
 
   const stopTyping = useCallback((groupId: string) => {
-    socketRef.current?.emit("group:typing:stop", { groupId })
+    emitSafe("group:typing:stop", { groupId })
   }, [])
 
   return { sendMessage, sendRead, startTyping, stopTyping }

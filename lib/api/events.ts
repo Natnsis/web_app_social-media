@@ -36,6 +36,7 @@ export interface EventItem {
   isPublic: boolean
   createdAt: string
   updatedAt: string
+  timeAgo: string
   church: ChurchInfo
   attendeeCount: number
 }

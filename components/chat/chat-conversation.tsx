@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
-import Link from "next/link"
 import { MessageBubble } from "@/components/chat/message-bubble"
 import { ChatInput } from "@/components/chat/chat-input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ChevronLeft } from "nasicon-react/outline"
 import dynamic from "next/dynamic"
+import { apiUploadMedia } from "@/lib/api/messaging"
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false })
 
@@ -31,18 +31,10 @@ interface ChatConversationProps {
   headerStatusText?: string
   isGroup?: boolean
   onBack?: () => void
-  conversationId?: string
+  chatId?: string
   otherUserId?: string
   currentUserId?: string
   onDeleteMessage?: (messageId: string) => void
-  onUploadedMessage?: (message: {
-    id: string
-    body: string
-    createdAt: string
-    senderId: string
-    isRead?: boolean
-    mediaUrl?: string | null
-  }) => void
 }
 
 export function ChatConversation({
@@ -59,15 +51,15 @@ export function ChatConversation({
   headerStatusText,
   isGroup,
   onBack,
-  conversationId,
+  chatId,
   otherUserId,
   currentUserId,
   onDeleteMessage,
-  onUploadedMessage,
 }: ChatConversationProps) {
   const [showEmoji, setShowEmoji] = useState(false)
   const [inputValue, setInputValue] = useState("")
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -81,36 +73,25 @@ export function ChatConversation({
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !conversationId) return
+    if (!file || !chatId) return
     setUploading(true)
+    setUploadError(null)
     try {
-      const { apiSendMessage, apiSendGroupComment } = await import("@/lib/api/messaging")
-      const body = inputValue.trim() || file.name || "Attachment"
-      if (isGroup) {
-        const res = await apiSendGroupComment(conversationId, body, file)
-        if (res.data) {
-          onUploadedMessage?.({
-            id: res.data.id,
-            body: res.data.body,
-            createdAt: res.data.createdAt,
-            senderId: res.data.senderId,
-            isRead: false,
-            mediaUrl: res.data.mediaUrl,
-          })
-        }
-      } else {
-        const res = await apiSendMessage(conversationId, body, file)
-        if (res.data) onUploadedMessage?.(res.data)
+      const res = await apiUploadMedia(file)
+      const mediaUrl = res.data?.mediaUrl
+      if (mediaUrl) {
+        const body = inputValue.trim() || file.name || "Attachment"
+        onSend(body, mediaUrl)
       }
       setInputValue("")
       onTypingStop?.()
-    } catch {
-      console.error("Upload failed")
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.")
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
     }
-  }, [conversationId, isGroup, inputValue, onTypingStop, onUploadedMessage, setInputValue])
+  }, [chatId, inputValue, onSend, onTypingStop, setInputValue])
 
   const handleSend = useCallback((text: string) => {
     onSend(text)
@@ -144,6 +125,12 @@ export function ChatConversation({
           </div>
         </div>
       </header>
+
+      {uploadError && (
+        <div className="mx-3 mt-2 rounded-xl bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {uploadError}
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
         {loading && (

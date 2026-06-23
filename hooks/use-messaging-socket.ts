@@ -67,20 +67,32 @@ export function useMessagingSocket(enabled: boolean, options: UseMessagingSocket
     }
   }, [enabled])
 
+  function emitSafe(event: string, ...args: unknown[]) {
+    const socket = socketRef.current
+    if (!socket) {
+      console.warn(`[useMessagingSocket] Cannot emit "${event}" — socket not connected`)
+      return
+    }
+    if (!socket.connected) {
+      console.warn(`[useMessagingSocket] Socket not connected, emit "${event}" may be lost`)
+    }
+    socket.emit(event, ...args)
+  }
+
   const sendMessage = useCallback((payload: { conversationId?: string; recipientId?: string; body: string; mediaUrl?: string }) => {
-    socketRef.current?.emit("message:send", payload)
+    emitSafe("message:send", payload)
   }, [])
 
   const sendRead = useCallback((conversationId: string) => {
-    socketRef.current?.emit("message:read", { conversationId })
+    emitSafe("message:read", { conversationId })
   }, [])
 
   const startTyping = useCallback((conversationId: string) => {
-    socketRef.current?.emit("typing:start", { conversationId })
+    emitSafe("typing:start", { conversationId })
   }, [])
 
   const stopTyping = useCallback((conversationId: string) => {
-    socketRef.current?.emit("typing:stop", { conversationId })
+    emitSafe("typing:stop", { conversationId })
   }, [])
 
   return { sendMessage, sendRead, startTyping, stopTyping }

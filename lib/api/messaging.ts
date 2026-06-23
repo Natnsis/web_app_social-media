@@ -14,29 +14,6 @@ function token() {
   return useAuthStore.getState().accessToken ?? undefined
 }
 
-function mediaFormData(body: string, file: File, fileFieldName: string, conversationId?: string) {
-  const fd = new FormData()
-  if (conversationId) fd.append("conversationId", conversationId)
-  fd.append("body", body)
-  fd.append(fileFieldName, file)
-  return fd
-}
-
-async function postMediaWithFallback<T>(path: string, body: string, file: File, conversationId?: string) {
-  const fileFieldNames = ["file", "media", "image"]
-  let lastError: unknown
-
-  for (const fileFieldName of fileFieldNames) {
-    try {
-      return await postFormData<T>(path, mediaFormData(body, file, fileFieldName, conversationId), token())
-    } catch (error) {
-      lastError = error
-    }
-  }
-
-  throw lastError
-}
-
 export function apiGetConversations() {
   return get<ConversationsResponse>("/v1/messaging/conversations", token())
 }
@@ -49,25 +26,23 @@ export function apiGetUnreadCount() {
   return get<UnreadCountResponse>("/v1/messaging/unread-count", token())
 }
 
-export function apiSendMessage(conversationId: string, body: string, file?: File) {
-  if (file) {
-    return postMediaWithFallback<ApiResponse<MessageEvent>>("/v1/messaging/conversations", body, file, conversationId)
-  }
-
+export function apiSendMessage(conversationId: string, body: string) {
   const fd = new FormData()
   fd.append("conversationId", conversationId)
   fd.append("body", body)
   return postFormData<ApiResponse<MessageEvent>>("/v1/messaging/conversations", fd, token())
 }
 
-export function apiSendGroupComment(groupId: string, body: string, file?: File) {
-  if (file) {
-    return postMediaWithFallback<ApiResponse<GroupComment>>(`/v1/groups/${groupId}/comments`, body, file)
-  }
-
+export function apiSendGroupComment(groupId: string, body: string) {
   const fd = new FormData()
   fd.append("body", body)
-  return postFormData<ApiResponse<GroupComment>>(`/v1/groups/${groupId}/comments`, fd, token())
+  return postFormData<ApiResponse<GroupComment>>(`/v1/groups/${groupId}/groupmessages`, fd, token())
+}
+
+export function apiUploadMedia(file: File) {
+  const fd = new FormData()
+  fd.append("media", file)
+  return postFormData<ApiResponse<{ mediaUrl: string }>>("/v1/messaging/media", fd, token())
 }
 
 export function apiStartConversation(recipientId: string) {

@@ -209,6 +209,7 @@ export interface Conversation {
   participantA: ParticipantInfo
   participantB: ParticipantInfo
   messages: MessageEvent[]
+  unreadCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -286,8 +287,13 @@ export interface GroupMessageReadReceipt {
 
 export interface GroupCommentsResponse {
   success: boolean
-  data: GroupComment[]
-  meta: { total: number; skip: number; take: number }
+  data: {
+    data: GroupComment[]
+    total: number
+    skip: number
+    take: number
+  }
+  timestamp: string
 }
 
 export interface GroupMessageReplyEvent {

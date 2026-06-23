@@ -8,80 +8,44 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useAuthStore } from "@/lib/store/auth"
+import { useEvents } from "@/hooks/use-events"
 import {
     Heart, Bookmark, Eye, MessageSquare, CornerUpRight, Sparkles,
 } from "nasicon-react/outline"
 import { DotsHorizontal, CirclePlus } from "nasicon-react/solid"
+import type { EventItem } from "@/types"
 
-const filterPills = ["All", "Upcoming", "Past", "Live"]
+const filterPills = ["All", "Upcoming", "Ongoing", "Completed"]
 
-const events = [
-    {
-        id: 1,
-        name: "Sunday Morning Service",
-        organizer: "Beza International",
-        initials: "BI",
-        date: "Jun 22, 2026",
-        time: "9:00 AM",
-        description: "Join us for a powerful Sunday service as we worship together and hear the word of God. All are welcome!",
-        tags: ["#Worship", "#SundayService"],
-        attendees: "1.2k",
-        comments: "89",
-        views: "4.5k",
-        category: "Upcoming",
-    },
-    {
-        id: 2,
-        name: "Youth Conference 2026",
-        organizer: "Grace Community",
-        initials: "GC",
-        date: "Jul 5, 2026",
-        time: "10:00 AM",
-        description: "An empowering three-day youth conference featuring live worship, inspiring speakers, and community outreach programs.",
-        tags: ["#Youth", "#Conference"],
-        attendees: "3.4k",
-        comments: "245",
-        views: "12k",
-        category: "Upcoming",
-    },
-    {
-        id: 3,
-        name: "Prayer Night",
-        organizer: "Faith Assembly",
-        initials: "FA",
-        date: "Jun 18, 2026",
-        time: "7:00 PM",
-        description: "A night of intercessory prayer and worship. Come with your prayer requests as we seek God together.",
-        tags: ["#Prayer", "#NightWatch"],
-        attendees: "856",
-        comments: "67",
-        views: "2.1k",
-        category: "Past",
-    },
-    {
-        id: 4,
-        name: "Bible Study: Book of Romans",
-        organizer: "Beza International",
-        initials: "BI",
-        date: "Jun 19, 2026",
-        time: "6:30 PM",
-        description: "Live Bible study streaming now! Join Pastor Samuel as we dive deep into the Book of Romans.",
-        tags: ["#BibleStudy", "#Romans"],
-        attendees: "2.1k",
-        comments: "156",
-        views: "6.8k",
-        category: "Live",
-    },
-]
+function formatEventDate(event: EventItem) {
+    const start = new Date(event.startDate)
+    const end = new Date(event.endDate)
+    const dateStr = start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    const timeStr = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    const sameDay = start.toDateString() === end.toDateString()
+    if (sameDay) return `${dateStr} at ${timeStr}`
+    const endDateStr = end.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    return `${dateStr} - ${endDateStr}`
+}
+
+function getInitials(name: string) {
+    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+}
+
+function abbreviate(n: number) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "m"
+    if (n >= 1_000) return (n / 1_000).toFixed(1) + "k"
+    return String(n)
+}
 
 /* ── Right Panel ── */
 
-function EventsRightPanel({ events: evts }: { events: typeof events }) {
+function EventsRightPanel({ events: evts }: { events: EventItem[] }) {
     const totalEvents = evts.length
-    const upcoming = evts.filter((e) => e.category === "Upcoming").length
-    const past = evts.filter((e) => e.category === "Past").length
-    const live = evts.filter((e) => e.category === "Live").length
-    const categoryLabels = ["All", "Upcoming", "Past", "Live"]
+    const upcoming = evts.filter((e) => e.status === "upcoming").length
+    const ongoing = evts.filter((e) => e.status === "ongoing").length
+    const completed = evts.filter((e) => e.status === "completed").length
+    const categoryLabels = ["All", "Upcoming", "Ongoing", "Completed"]
 
     return (
         <aside className="hidden h-full shrink-0 flex-col overflow-y-auto rounded-2xl border border-border bg-card p-4 xl:flex">
@@ -101,11 +65,11 @@ function EventsRightPanel({ events: evts }: { events: typeof events }) {
                             <p className="text-[11px] text-primary-foreground/70">upcoming</p>
                         </div>
                         <div>
-                            <p className="text-lg font-black">{live}</p>
-                            <p className="text-[11px] text-primary-foreground/70">live</p>
+                            <p className="text-lg font-black">{ongoing}</p>
+                            <p className="text-[11px] text-primary-foreground/70">ongoing</p>
                         </div>
                         <div>
-                            <p className="text-lg font-black">{past}</p>
+                            <p className="text-lg font-black">{completed}</p>
                             <p className="text-[11px] text-primary-foreground/70">past</p>
                         </div>
                     </div>
@@ -143,22 +107,22 @@ function EventsRightPanel({ events: evts }: { events: typeof events }) {
                     Upcoming Events
                 </p>
                 <div className="space-y-2">
-                    {evts.filter((e) => e.category === "Upcoming").slice(0, 3).map((e) => (
+                    {evts.filter((e) => e.status === "upcoming").slice(0, 3).map((e) => (
                         <div key={e.id} className="rounded-xl border border-border bg-background p-2.5">
                             <div className="flex items-center gap-2.5">
                                 <Avatar className="size-8">
                                     <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
-                                        {e.initials}
+                                        {getInitials(e.title)}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold truncate">{e.name}</p>
-                                    <p className="text-[11px] text-muted-foreground">{e.date}</p>
+                                    <p className="text-xs font-semibold truncate">{e.title}</p>
+                                    <p className="text-[11px] text-muted-foreground">{formatEventDate(e)}</p>
                                 </div>
                             </div>
                         </div>
                     ))}
-                    {evts.filter((e) => e.category === "Upcoming").length === 0 && (
+                    {evts.filter((e) => e.status === "upcoming").length === 0 && (
                         <p className="text-[11px] text-muted-foreground text-center py-3">No upcoming events</p>
                     )}
                 </div>
@@ -169,11 +133,23 @@ function EventsRightPanel({ events: evts }: { events: typeof events }) {
 
 /* ── Main Page ── */
 
+function statusFilter(events: EventItem[], filter: string) {
+    if (filter === "All") return events
+    const statusMap: Record<string, string> = {
+        Upcoming: "upcoming",
+        Ongoing: "ongoing",
+        Completed: "completed",
+    }
+    return events.filter((e) => e.status === statusMap[filter])
+}
+
 export default function EventsPage() {
     const { user } = useAuthStore()
     const [activeFilter, setActiveFilter] = useState("All")
+    const { data: eventsData, isLoading, isError } = useEvents(1, 50, undefined, true)
+    const allEvents = eventsData?.data ?? []
 
-    const filteredEvents = activeFilter === "All" ? events : events.filter((e) => e.category === activeFilter)
+    const filteredEvents = statusFilter(allEvents, activeFilter)
 
     return (
         <div className="relative flex h-full flex-col overflow-hidden">
@@ -206,67 +182,81 @@ export default function EventsPage() {
                     ))}
                 </div>
 
-                <div className="mx-auto max-w-[1500px]">
-                    <div className="grid grid-cols-1 gap-5 px-4 pb-10 xl:grid-cols-[minmax(0,1fr)_300px]">
-                        <div className="space-y-4">
-                            {filteredEvents.map((event) => (
-                                <div key={event.id} className="rounded-2xl border border-border bg-card p-3 shadow-sm">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <Avatar>
-                                                <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
-                                                    {event.initials}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <p className="text-sm font-semibold">{event.name}</p>
-                                                <p className="text-xs text-muted-foreground">{event.date} at {event.time}</p>
+                {isLoading && (
+                    <div className="flex justify-center py-16">
+                        <p className="text-sm text-muted-foreground">Loading events...</p>
+                    </div>
+                )}
+
+                {isError && (
+                    <div className="flex justify-center py-16">
+                        <p className="text-sm text-destructive">Failed to load events</p>
+                    </div>
+                )}
+
+                {!isLoading && !isError && (
+                    <div className="mx-auto max-w-[1500px]">
+                        <div className="grid grid-cols-1 gap-5 px-4 pb-10 xl:grid-cols-[minmax(0,1fr)_300px]">
+                            <div className="space-y-4">
+                                {filteredEvents.length === 0 && (
+                                    <div className="flex justify-center py-16">
+                                        <p className="text-sm text-muted-foreground">No events found</p>
+                                    </div>
+                                )}
+                                {filteredEvents.map((event) => (
+                                    <div key={event.id} className="rounded-2xl border border-border bg-card p-3 shadow-sm">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2.5">
+                                                <Avatar>
+                                                    <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
+                                                        {getInitials(event.church?.name || event.title)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <p className="text-sm font-semibold">{event.title}</p>
+                                                    <p className="text-xs text-muted-foreground">{formatEventDate(event)}</p>
+                                                </div>
+                                            </div>
+                                            <Button variant="ghost" size="icon-sm"><DotsHorizontal size={18} /></Button>
+                                        </div>
+
+                                        <p className="mt-2 text-sm leading-relaxed">{event.description}</p>
+
+                                        {event.location && (
+                                            <p className="mt-1 text-xs text-muted-foreground">📍 {event.location}</p>
+                                        )}
+
+                                        <div className="mt-3 h-40 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                                            <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                                                <Calendar size={24} />
+                                                <span className="text-xs font-medium">{formatEventDate(event)}</span>
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="icon-sm"><DotsHorizontal size={18} /></Button>
-                                    </div>
 
-                                    <p className="mt-2 text-sm leading-relaxed">{event.description}</p>
-
-                                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                                        {event.tags.map((tag) => (
-                                            <Badge key={tag} variant="outline" className="rounded-full text-primary border-primary/30 text-[11px]">
-                                                {tag}
-                                            </Badge>
-                                        ))}
-                                    </div>
-
-                                    <div className="mt-3 h-40 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
-                                        <div className="flex flex-col items-center gap-1 text-muted-foreground">
-                                            <Calendar size={24} />
-                                            <span className="text-xs font-medium">{event.date}</span>
-                                            <span className="text-[10px]">{event.time}</span>
+                                        <div className="mt-3 flex items-center justify-between">
+                                            <div className="flex items-center gap-4">
+                                                <button className="flex items-center gap-1 text-sm text-muted-foreground">
+                                                    <Heart size={18} /><span>{abbreviate(event.attendeeCount)}</span>
+                                                </button>
+                                                <button className="flex items-center gap-1 text-sm text-muted-foreground">
+                                                    <MessageSquare size={18} /><span>0</span>
+                                                </button>
+                                                <button className="flex items-center gap-1 text-sm text-muted-foreground">
+                                                    <Eye size={18} /><span>0</span>
+                                                </button>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <button className="text-muted-foreground"><Bookmark size={18} /></button>
+                                                <button className="text-muted-foreground"><CornerUpRight size={18} /></button>
+                                            </div>
                                         </div>
                                     </div>
-
-                                    <div className="mt-3 flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <button className="flex items-center gap-1 text-sm text-muted-foreground">
-                                                <Heart size={18} /><span>{event.attendees}</span>
-                                            </button>
-                                            <button className="flex items-center gap-1 text-sm text-muted-foreground">
-                                                <MessageSquare size={18} /><span>{event.comments}</span>
-                                            </button>
-                                            <button className="flex items-center gap-1 text-sm text-muted-foreground">
-                                                <Eye size={18} /><span>{event.views}</span>
-                                            </button>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <button className="text-muted-foreground"><Bookmark size={18} /></button>
-                                            <button className="text-muted-foreground"><CornerUpRight size={18} /></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
+                            <EventsRightPanel events={allEvents} />
                         </div>
-                        <EventsRightPanel events={filteredEvents} />
                     </div>
-                </div>
+                )}
             </div>
 
             {user?.role === "Church Owner" && (
