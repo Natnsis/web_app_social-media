@@ -1,5 +1,6 @@
 import { get, post, del } from "./client"
 import { useAuthStore } from "@/lib/store/auth"
+import type { ChurchDetailResponse } from "@/types"
 
 function token() {
   return useAuthStore.getState().accessToken ?? undefined
@@ -48,4 +49,8 @@ export function apiFollowChurch(id: string) {
 
 export function apiUnfollowChurch(id: string) {
   return del<{ success: boolean }>(`/v1/churches/${id}/follow`, token())
+}
+
+export function apiGetChurch(id: string) {
+  return get<ChurchDetailResponse>(`/v1/churches/${id}`, token())
 }

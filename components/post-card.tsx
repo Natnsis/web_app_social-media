@@ -2,11 +2,12 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Heart as HeartOutline, MessageSquare, Bookmark as BookmarkOutline, CornerUpRight, Eye, CirclePlay } from "nasicon-react/outline"
 import { DotsHorizontal, Heart as HeartSolid, Bookmark as BookmarkSolid } from "nasicon-react/solid"
+import { ChurchProfileDialog } from "@/components/church-profile-dialog"
 import type { Post } from "@/types"
 
 function getInitials(name: string) {
@@ -40,6 +41,7 @@ export function PostCard({
   featured = false,
 }: PostCardProps) {
   const [imgError, setImgError] = useState<Set<string>>(new Set())
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   const hasImages = post.files.some((f) => f.mediaType === "image")
   const hasVideos = post.files.some((f) => f.mediaType === "video")
@@ -51,13 +53,23 @@ export function PostCard({
       <div className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Avatar className="size-11">
-              <AvatarFallback className="bg-primary/15 text-primary text-sm font-bold">
-                {getInitials(post.church.name)}
-              </AvatarFallback>
-            </Avatar>
+            <button onClick={() => setDialogOpen(true)} className="outline-none">
+              <Avatar className="size-11 cursor-pointer transition-opacity hover:opacity-80">
+                {post.church.logoUrl ? (
+                  <AvatarImage src={post.church.logoUrl} alt={post.church.name} />
+                ) : null}
+                <AvatarFallback className="bg-primary/15 text-primary text-sm font-bold">
+                  {getInitials(post.church.name)}
+                </AvatarFallback>
+              </Avatar>
+            </button>
             <div>
-              <p className="font-bold leading-tight">{post.church.name}</p>
+              <button
+                onClick={() => setDialogOpen(true)}
+                className="font-bold leading-tight text-left outline-none hover:underline"
+              >
+                {post.church.name}
+              </button>
               <p className="text-xs text-muted-foreground">{post.timeAgo}</p>
             </div>
           </div>
@@ -228,6 +240,12 @@ export function PostCard({
           </button>
         </div>
       </div>
+
+      <ChurchProfileDialog
+        churchId={post.church.id}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </article>
   )
 }

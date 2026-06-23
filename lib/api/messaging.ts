@@ -70,6 +70,13 @@ export function apiSendGroupComment(groupId: string, body: string, file?: File) 
   return postFormData<ApiResponse<GroupComment>>(`/v1/groups/${groupId}/comments`, fd, token())
 }
 
+export function apiStartConversation(recipientId: string) {
+  const fd = new FormData()
+  fd.append("recipientId", recipientId)
+  fd.append("body", "")
+  return postFormData<ApiResponse<MessageEvent>>("/v1/messaging/conversations", fd, token())
+}
+
 export function apiDeleteMessage(messageId: string) {
   return del(`/v1/messaging/messages/${messageId}`, token())
 }

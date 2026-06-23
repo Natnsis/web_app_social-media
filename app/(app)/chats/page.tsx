@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useAuthStore } from "@/lib/store/auth"
 import { useConversations, useUnreadCount } from "@/hooks/use-conversations"
 import { useGroups } from "@/hooks/use-groups"
 import { ChatListItem } from "@/components/chat/chat-list-item"
 import { ChatThread } from "@/components/chat/chat-thread"
+import { CreateGroupDialog } from "@/components/create-group-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { CirclePlus, Search, Users } from "nasicon-react/outline"

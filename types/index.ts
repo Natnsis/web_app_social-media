@@ -330,9 +330,35 @@ export interface CreateGroupPayload {
   isPrivate?: boolean
 }
 
+export interface UpdateGroupPayload {
+  name?: string
+  description?: string
+  isPrivate?: boolean
+}
+
 export interface CreateGroupResponse {
   success: boolean
   data: { id: string }
+}
+
+export interface GroupMemberUser {
+  id: string
+  fullName: string
+  avatarUrl: string | null
+}
+
+export interface GroupMember {
+  id: string
+  groupId: string
+  userId: string
+  role: string
+  joinedAt: string
+  user: GroupMemberUser
+}
+
+export interface GroupMembersResponse {
+  success: boolean
+  data: GroupMember[]
 }
 
 export interface MinimalGroup {
@@ -540,5 +566,102 @@ export interface CampaignsResponse {
   success: boolean
   data: Campaign[]
   meta: PostsMeta
+  timestamp: string
+}
+
+// ── Church Detail Types ──
+
+export interface ChurchOwner {
+  id: string
+  fullName: string
+  avatarUrl: string | null
+}
+
+export interface ChurchModeratorUser {
+  id: string
+  fullName: string
+  avatarUrl: string | null
+}
+
+export interface ChurchModeratorAssignedBy {
+  id: string
+  fullName: string
+}
+
+export interface ChurchModerator {
+  id: string
+  churchId: string
+  userId: string
+  assignedByUserId: string
+  assignedAt: string
+  user: ChurchModeratorUser
+  assignedBy: ChurchModeratorAssignedBy
+}
+
+export interface ChurchDetailCount {
+  followers: number
+  campaigns: number
+  posts: number
+  shorts: number
+  groups: number
+  scrypers: number
+}
+
+export interface ChurchPaymentAccount {
+  id: string
+  churchId: string
+  provider: string
+  accountName: string
+  accountNumber: string
+  providerAccountId: string
+  isVerified: boolean
+  isActive: boolean
+  verifiedAt: string | null
+  verifiedByUserId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ChurchDetailData {
+  id: string
+  userId: string
+  name: string
+  slug: string
+  description: string
+  logoUrl: string | null
+  coverImageUrl: string | null
+  websiteUrl: string | null
+  phoneNumber: string | null
+  email: string | null
+  address: string | null
+  city: string | null
+  country: string | null
+  latitude: number | null
+  longitude: number | null
+  verificationStatus: string
+  verifiedAt: string | null
+  verifiedByUserId: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+  owner: ChurchOwner | null
+  moderators: ChurchModerator[]
+  documents: unknown[]
+  _count: ChurchDetailCount
+  isFollowing: boolean
+  myRole: string | null
+  paymentAccounts: ChurchPaymentAccount[]
+  latestVerificationApplication: unknown | null
+  activeScryper: unknown | null
+  recentPosts: unknown[]
+  recentShorts: unknown[]
+  recentCampaigns: unknown[]
+  recentGroups: unknown[]
+}
+
+export interface ChurchDetailResponse {
+  success: boolean
+  data: ChurchDetailData
   timestamp: string
 }
