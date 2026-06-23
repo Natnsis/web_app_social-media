@@ -29,32 +29,6 @@ import {
   addPhoneSchema,
 } from "@/lib/validation/auth"
 
-function BrandLogo() {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex size-8 items-center justify-center rounded-lg bg-primary shrink-0">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-          <path d="M2 17l10 5 10-5" />
-          <path d="M2 12l10 5 10-5" />
-        </svg>
-      </div>
-      <span className="text-sm font-bold text-white">
-        Faith<span className="text-blue-300">Connect</span>
-      </span>
-    </div>
-  )
-}
-
 type AuthMode =
   | "login"
   | "signup"
@@ -81,7 +55,9 @@ export default function LoginPage() {
   const [oldPassword, setOldPassword] = useState("")
 
   // Validation & API Errors
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({})
   const [apiError, setApiError] = useState<string | null>(null)
   const [apiSuccess, setApiSuccess] = useState<string | null>(null)
 
@@ -124,7 +100,10 @@ export default function LoginPage() {
               .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
               .join("")
           )
-          console.log("SUCCESSFULLY LOGGED IN! Detokenized JWT payload:", JSON.parse(jsonPayload))
+          console.log(
+            "SUCCESSFULLY LOGGED IN! Detokenized JWT payload:",
+            JSON.parse(jsonPayload)
+          )
         } catch (e) {
           console.error("Failed to decode token on console log", e)
         }
@@ -139,7 +118,9 @@ export default function LoginPage() {
   const registerMutation = useMutation({
     mutationFn: () => apiRegister({ fullName, email, phoneNumber, password }),
     onSuccess: () => {
-      setApiSuccess("Registration successful! Verify your phone number with the OTP code.")
+      setApiSuccess(
+        "Registration successful! Verify your phone number with the OTP code."
+      )
       // Automatically switch to verify OTP step with the registered phone number
       handleModeChange("verify-otp")
     },
@@ -155,7 +136,9 @@ export default function LoginPage() {
       handleModeChange("login")
     },
     onError: (err: any) => {
-      setApiError(err.message || "OTP verification failed. Please check the code.")
+      setApiError(
+        err.message || "OTP verification failed. Please check the code."
+      )
     },
   })
 
@@ -192,9 +175,12 @@ export default function LoginPage() {
   })
 
   const resetPasswordMutation = useMutation({
-    mutationFn: () => apiResetPassword({ phoneNumber, otp, newPassword, confirmPassword }),
+    mutationFn: () =>
+      apiResetPassword({ phoneNumber, otp, newPassword, confirmPassword }),
     onSuccess: () => {
-      setApiSuccess("Password reset successfully! Log in with your new password.")
+      setApiSuccess(
+        "Password reset successfully! Log in with your new password."
+      )
       handleModeChange("login")
     },
     onError: (err: any) => {
@@ -205,14 +191,22 @@ export default function LoginPage() {
   const changePasswordMutation = useMutation({
     mutationFn: () => {
       const state = useAuthStore.getState()
-      return apiChangePassword(oldPassword, newPassword, confirmPassword, state.accessToken || "")
+      return apiChangePassword(
+        oldPassword,
+        newPassword,
+        confirmPassword,
+        state.accessToken || ""
+      )
     },
     onSuccess: () => {
       setApiSuccess("Password changed successfully!")
       handleModeChange("login")
     },
     onError: (err: any) => {
-      setApiError(err.message || "Failed to change password. Please check your credentials.")
+      setApiError(
+        err.message ||
+          "Failed to change password. Please check your credentials."
+      )
     },
   })
 
@@ -254,7 +248,12 @@ export default function LoginPage() {
     setValidationErrors({})
     setApiError(null)
 
-    const validated = registerSchema.safeParse({ fullName, email, phoneNumber, password })
+    const validated = registerSchema.safeParse({
+      fullName,
+      email,
+      phoneNumber,
+      password,
+    })
     if (!validated.success) {
       const errors: Record<string, string> = {}
       validated.error.issues.forEach((issue) => {
@@ -392,7 +391,12 @@ export default function LoginPage() {
   const inputCls =
     "h-11 w-full rounded-xl border border-input bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
 
-  function PasswordInput({ value, onChange, placeholder, inputCls: extraCls }: {
+  function PasswordInput({
+    value,
+    onChange,
+    placeholder,
+    inputCls: extraCls,
+  }: {
     value: string
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
     placeholder?: string
@@ -412,7 +416,7 @@ export default function LoginPage() {
           type="button"
           tabIndex={-1}
           onClick={() => setVisible((v) => !v)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
         >
           {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>
@@ -432,49 +436,31 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <div className="hidden lg:flex lg:w-[50%] xl:w-[50%] relative flex-col justify-between overflow-hidden">
+      <div className="relative hidden flex-col justify-between overflow-hidden lg:flex lg:w-[50%] xl:w-[50%]">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('/login.jpg')" }}
         />
 
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
-
-        <div className="relative z-10 px-10 pt-10">
-          <BrandLogo />
+        <div className="relative z-10 flex justify-center px-10 pt-10">
+          <h1 className="text-xl font-bold text-white">FaithConnect</h1>
         </div>
 
-        <div className="relative z-10 px-10 pb-16 space-y-6">
+        <div className="relative z-10 space-y-6 px-10 pb-16">
           <div className="space-y-4">
-            <h1 className="text-4xl xl:text-5xl font-bold text-white leading-tight">
+            <h1 className="text-2xl leading-tight font-bold text-white xl:text-5xl">
               One platform for worship,
               <br />
               community, and
               <br />
               stewardship.
             </h1>
-            <p className="text-sm text-white/70 max-w-md leading-relaxed">
-              This platform empowers African faith communities. Connect with your church, participate
-              in community growth, and manage your contributions with modern precision.
+            <p className="max-w-md text-sm leading-relaxed text-white/70">
+              This platform empowers African faith communities. Connect with
+              your church, participate in community growth, and manage your
+              contributions with modern precision.
             </p>
-          </div>
-          <div className="space-y-2">
-            {["Live worship streaming", "Transparent giving", "Governed ministry groups"].map((f) => (
-              <div key={f} className="flex items-center gap-2 text-sm text-white/80">
-                <div className="size-4 rounded-full bg-primary/80 flex items-center justify-center shrink-0">
-                  <svg width="8" height="8" viewBox="0 0 12 10" fill="none">
-                    <path
-                      d="M1 5l3.5 3.5L11 1"
-                      stroke="white"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-                {f}
-              </div>
-            ))}
           </div>
           <div className="flex gap-8 pt-2">
             <div>
@@ -489,31 +475,15 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 px-10 pb-6">
-          <p className="text-[11px] text-white/40">© 2026 FaithConnect. Ethiopian Protestant Union</p>
+          <p className="text-[11px] text-white/40">
+            © 2026 FaithConnect. Ethiopian Protestant Union
+          </p>
         </div>
       </div>
 
-      {/* ── Right form panel ── */}
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 lg:bg-card">
-        {/* Mobile brand header */}
-        <div className="lg:hidden mb-8 flex flex-col items-center gap-3">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-primary">
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+        <div className="mb-8 flex flex-col items-center gap-3 lg:hidden">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Faith<span className="text-primary">Connect</span>
           </h1>
         </div>
@@ -521,7 +491,7 @@ export default function LoginPage() {
         <div className="w-full max-w-[360px] space-y-6">
           {/* Header */}
           <div>
-            <h2 className="text-xl font-bold text-foreground">
+            <h2 className="hidden text-center text-xl font-bold text-foreground md:block">
               {mode === "login" && "Welcome Back"}
               {mode === "signup" && "Create Account"}
               {mode === "verify-otp" && "Verify OTP"}
@@ -530,26 +500,31 @@ export default function LoginPage() {
               {mode === "change-password" && "Change Password"}
               {mode === "add-phone" && "Add Phone Number"}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-center text-sm text-muted-foreground">
               {mode === "login" && "Sign in to your FaithConnect account"}
               {mode === "signup" && "Join the FaithConnect community today"}
-              {mode === "verify-otp" && "Enter the 6-digit code sent to your phone"}
-              {mode === "forgot-password" && "Enter your phone number to receive an OTP code"}
-              {mode === "reset-password" && "Enter your OTP code and set a new password"}
-              {mode === "change-password" && "Update your account password securely"}
-              {mode === "add-phone" && "Verify your phone number to secure your account"}
+              {mode === "verify-otp" &&
+                "Enter the 6-digit code sent to your phone"}
+              {mode === "forgot-password" &&
+                "Enter your phone number to receive an OTP code"}
+              {mode === "reset-password" &&
+                "Enter your OTP code and set a new password"}
+              {mode === "change-password" &&
+                "Update your account password securely"}
+              {mode === "add-phone" &&
+                "Verify your phone number to secure your account"}
             </p>
           </div>
 
           {/* Feedback Messages */}
           {apiError && (
-            <div className="p-3 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-center text-xs text-red-400">
               {apiError}
             </div>
           )}
 
           {apiSuccess && (
-            <div className="p-3 text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
+            <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-center text-xs text-green-400">
               {apiSuccess}
             </div>
           )}
@@ -560,7 +535,9 @@ export default function LoginPage() {
             {mode === "login" && (
               <form onSubmit={handleLoginSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Email or Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Email or Phone Number
+                  </label>
                   <input
                     type="text"
                     placeholder="user@example.com or +251912345678"
@@ -569,13 +546,17 @@ export default function LoginPage() {
                     className={inputCls}
                   />
                   {validationErrors.emailOrPhone && (
-                    <p className="text-[11px] text-red-400">{validationErrors.emailOrPhone}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.emailOrPhone}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-muted-foreground">Password</label>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Password
+                    </label>
                     <button
                       type="button"
                       onClick={() => handleModeChange("forgot-password")}
@@ -589,11 +570,17 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   {validationErrors.password && (
-                    <p className="text-[11px] text-red-400">{validationErrors.password}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.password}
+                    </p>
                   )}
                 </div>
 
-                <Button type="submit" disabled={isLoading} className="h-11 w-full rounded-xl mt-2">
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="mt-2 h-11 w-full rounded-xl"
+                >
                   {isLoading ? "Signing In..." : "Sign In →"}
                 </Button>
               </form>
@@ -603,7 +590,9 @@ export default function LoginPage() {
             {mode === "signup" && (
               <form onSubmit={handleRegisterSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Full Name</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Full Name
+                  </label>
                   <input
                     type="text"
                     placeholder="John Doe"
@@ -612,12 +601,16 @@ export default function LoginPage() {
                     className={inputCls}
                   />
                   {validationErrors.fullName && (
-                    <p className="text-[11px] text-red-400">{validationErrors.fullName}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.fullName}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Email Address</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Email Address
+                  </label>
                   <input
                     type="email"
                     placeholder="john@example.com"
@@ -626,12 +619,16 @@ export default function LoginPage() {
                     className={inputCls}
                   />
                   {validationErrors.email && (
-                    <p className="text-[11px] text-red-400">{validationErrors.email}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.email}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Phone Number
+                  </label>
                   <input
                     type="text"
                     placeholder="+251912345678"
@@ -640,22 +637,32 @@ export default function LoginPage() {
                     className={inputCls}
                   />
                   {validationErrors.phoneNumber && (
-                    <p className="text-[11px] text-red-400">{validationErrors.phoneNumber}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.phoneNumber}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Password</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Password
+                  </label>
                   <PasswordInput
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   {validationErrors.password && (
-                    <p className="text-[11px] text-red-400">{validationErrors.password}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.password}
+                    </p>
                   )}
                 </div>
 
-                <Button type="submit" disabled={isLoading} className="h-11 w-full rounded-xl mt-2">
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="mt-2 h-11 w-full rounded-xl"
+                >
                   {isLoading ? "Creating Account..." : "Create Account →"}
                 </Button>
               </form>
@@ -665,7 +672,9 @@ export default function LoginPage() {
             {mode === "verify-otp" && (
               <form onSubmit={handleVerifyOtpSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Phone Number
+                  </label>
                   <input
                     type="text"
                     placeholder="+251912345678"
@@ -674,12 +683,16 @@ export default function LoginPage() {
                     className={inputCls}
                   />
                   {validationErrors.phoneNumber && (
-                    <p className="text-[11px] text-red-400">{validationErrors.phoneNumber}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.phoneNumber}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">6-Digit OTP</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    6-Digit OTP
+                  </label>
                   <input
                     type="text"
                     placeholder="123456"
@@ -689,7 +702,9 @@ export default function LoginPage() {
                     className={inputCls}
                   />
                   {validationErrors.otp && (
-                    <p className="text-[11px] text-red-400">{validationErrors.otp}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.otp}
+                    </p>
                   )}
                 </div>
 
@@ -699,11 +714,15 @@ export default function LoginPage() {
                     variant="outline"
                     onClick={handleResendOtp}
                     disabled={isLoading}
-                    className="h-11 flex-1 rounded-xl text-foreground border-border hover:bg-accent"
+                    className="h-11 flex-1 rounded-xl border-border text-foreground hover:bg-accent"
                   >
                     Resend OTP
                   </Button>
-                  <Button type="submit" disabled={isLoading} className="h-11 flex-1 rounded-xl">
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="h-11 flex-1 rounded-xl"
+                  >
                     {isLoading ? "Verifying..." : "Verify OTP"}
                   </Button>
                 </div>
@@ -714,7 +733,9 @@ export default function LoginPage() {
             {mode === "forgot-password" && (
               <form onSubmit={handleForgotPasswordSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Phone Number
+                  </label>
                   <input
                     type="text"
                     placeholder="+251912345678"
@@ -723,11 +744,17 @@ export default function LoginPage() {
                     className={inputCls}
                   />
                   {validationErrors.phoneNumber && (
-                    <p className="text-[11px] text-red-400">{validationErrors.phoneNumber}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.phoneNumber}
+                    </p>
                   )}
                 </div>
 
-                <Button type="submit" disabled={isLoading} className="h-11 w-full rounded-xl mt-2">
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="mt-2 h-11 w-full rounded-xl"
+                >
                   {isLoading ? "Requesting OTP..." : "Request OTP"}
                 </Button>
               </form>
@@ -737,7 +764,9 @@ export default function LoginPage() {
             {mode === "reset-password" && (
               <form onSubmit={handleResetPasswordSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Phone Number
+                  </label>
                   <input
                     type="text"
                     placeholder="+251912345678"
@@ -746,12 +775,16 @@ export default function LoginPage() {
                     className={inputCls}
                   />
                   {validationErrors.phoneNumber && (
-                    <p className="text-[11px] text-red-400">{validationErrors.phoneNumber}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.phoneNumber}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">6-Digit OTP</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    6-Digit OTP
+                  </label>
                   <input
                     type="text"
                     placeholder="123456"
@@ -761,33 +794,47 @@ export default function LoginPage() {
                     className={inputCls}
                   />
                   {validationErrors.otp && (
-                    <p className="text-[11px] text-red-400">{validationErrors.otp}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.otp}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">New Password</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    New Password
+                  </label>
                   <PasswordInput
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
                   {validationErrors.newPassword && (
-                    <p className="text-[11px] text-red-400">{validationErrors.newPassword}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.newPassword}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Confirm New Password</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Confirm New Password
+                  </label>
                   <PasswordInput
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                   {validationErrors.confirmPassword && (
-                    <p className="text-[11px] text-red-400">{validationErrors.confirmPassword}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.confirmPassword}
+                    </p>
                   )}
                 </div>
 
-                <Button type="submit" disabled={isLoading} className="h-11 w-full rounded-xl mt-2">
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="mt-2 h-11 w-full rounded-xl"
+                >
                   {isLoading ? "Resetting Password..." : "Reset Password"}
                 </Button>
               </form>
@@ -797,39 +844,55 @@ export default function LoginPage() {
             {mode === "change-password" && (
               <form onSubmit={handleChangePasswordSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Old Password</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Old Password
+                  </label>
                   <PasswordInput
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
                   />
                   {validationErrors.oldPassword && (
-                    <p className="text-[11px] text-red-400">{validationErrors.oldPassword}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.oldPassword}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">New Password</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    New Password
+                  </label>
                   <PasswordInput
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
                   {validationErrors.newPassword && (
-                    <p className="text-[11px] text-red-400">{validationErrors.newPassword}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.newPassword}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Confirm New Password</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Confirm New Password
+                  </label>
                   <PasswordInput
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                   {validationErrors.confirmPassword && (
-                    <p className="text-[11px] text-red-400">{validationErrors.confirmPassword}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.confirmPassword}
+                    </p>
                   )}
                 </div>
 
-                <Button type="submit" disabled={isLoading} className="h-11 w-full rounded-xl mt-2">
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="mt-2 h-11 w-full rounded-xl"
+                >
                   {isLoading ? "Changing Password..." : "Change Password"}
                 </Button>
               </form>
@@ -839,7 +902,9 @@ export default function LoginPage() {
             {mode === "add-phone" && (
               <form onSubmit={handleAddPhoneSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Phone Number
+                  </label>
                   <input
                     type="text"
                     placeholder="+251912345678"
@@ -848,11 +913,17 @@ export default function LoginPage() {
                     className={inputCls}
                   />
                   {validationErrors.phoneNumber && (
-                    <p className="text-[11px] text-red-400">{validationErrors.phoneNumber}</p>
+                    <p className="text-[11px] text-red-400">
+                      {validationErrors.phoneNumber}
+                    </p>
                   )}
                 </div>
 
-                <Button type="submit" disabled={isLoading} className="h-11 w-full rounded-xl mt-2">
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="mt-2 h-11 w-full rounded-xl"
+                >
                   {isLoading ? "Adding Phone..." : "Add Phone Number"}
                 </Button>
               </form>
@@ -863,9 +934,11 @@ export default function LoginPage() {
           {mode === "login" && (
             <>
               <div className="relative flex items-center gap-3">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-[11px] text-muted-foreground">OR SIGN IN WITH</span>
-                <div className="flex-1 h-px bg-border" />
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-[11px] text-muted-foreground">
+                  OR SIGN IN WITH
+                </span>
+                <div className="h-px flex-1 bg-border" />
               </div>
 
               <div className="w-full">
@@ -874,9 +947,14 @@ export default function LoginPage() {
                   type="button"
                   onClick={handleGoogleLoginMock}
                   disabled={isLoading}
-                  className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-[#dadce0] bg-white text-sm font-medium text-[#3c4043] hover:bg-[#f8f9fa] hover:border-[#c3c6ca] transition-colors shadow-sm"
+                  className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-[#dadce0] bg-white text-sm font-medium text-[#3c4043] shadow-sm transition-colors hover:border-[#c3c6ca] hover:bg-[#f8f9fa]"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" className="shrink-0">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    className="shrink-0"
+                  >
                     <path
                       fill="#4285F4"
                       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -909,7 +987,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => handleModeChange("signup")}
-                    className="text-primary hover:underline font-medium"
+                    className="font-medium text-primary hover:underline"
                   >
                     Request Access
                   </button>
@@ -933,7 +1011,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => handleModeChange("login")}
-                  className="text-primary hover:underline font-medium"
+                  className="font-medium text-primary hover:underline"
                 >
                   Sign In
                 </button>
@@ -944,17 +1022,19 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => handleModeChange("login")}
-                className="text-primary hover:underline font-medium"
+                className="font-medium text-primary hover:underline"
               >
                 ← Back to Sign In
               </button>
             )}
           </div>
 
-          <div className="flex justify-center gap-4 text-[10px] text-muted-foreground/50 pt-2">
+          <div className="flex justify-center gap-4 pt-2 text-[10px] text-muted-foreground/50">
             <button className="hover:text-foreground/60">Privacy</button>
             <button className="hover:text-foreground/60">Terms</button>
-            <button className="hover:text-foreground/60">Contact Support</button>
+            <button className="hover:text-foreground/60">
+              Contact Support
+            </button>
           </div>
         </div>
       </div>
