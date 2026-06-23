@@ -34,6 +34,7 @@ export default function ChatsPage() {
   const [tab, setTab] = useState<TabType>("direct")
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false)
 
   const { data: convData, isLoading: convsLoading, isError: convsError } = useConversations()
   const { data: groupsData, isLoading: groupsLoading, isError: groupsError } = useGroups()
@@ -193,12 +194,12 @@ export default function ChatsPage() {
                   </span>
                 )}
                 {user?.role === "Church Owner" && (
-                  <Link
-                    href="/chats/new-group"
+                  <button
+                    onClick={() => setGroupDialogOpen(true)}
                     className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"
                   >
                     <CirclePlus size={20} />
-                  </Link>
+                  </button>
                 )}
               </div>
             </div>
@@ -322,13 +323,18 @@ export default function ChatsPage() {
       </div>
 
       {user?.role === "Church Owner" && (
-        <Link
-          href="/chats/new-group"
+        <button
+          onClick={() => setGroupDialogOpen(true)}
           className="absolute bottom-4 right-4 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg lg:hidden"
         >
           <CirclePlus size={28} />
-        </Link>
+        </button>
       )}
+
+      <CreateGroupDialog
+        open={groupDialogOpen}
+        onOpenChange={setGroupDialogOpen}
+      />
     </div>
   )
 }
