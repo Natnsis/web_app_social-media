@@ -392,33 +392,33 @@ export default function LoginPage() {
   const inputCls =
     "h-11 w-full rounded-xl border border-input bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
 
-function PasswordInput({ value, onChange, placeholder, inputCls: extraCls }: {
-  value: string
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  placeholder?: string
-  inputCls?: string
-}) {
-  const [visible, setVisible] = useState(false)
-  return (
-    <div className="relative">
-      <input
-        type={visible ? "text" : "password"}
-        placeholder={placeholder ?? "••••••••"}
-        value={value}
-        onChange={onChange}
-        className={cn(inputCls, "pr-10", extraCls)}
-      />
-      <button
-        type="button"
-        tabIndex={-1}
-        onClick={() => setVisible((v) => !v)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-      </button>
-    </div>
-  )
-}
+  function PasswordInput({ value, onChange, placeholder, inputCls: extraCls }: {
+    value: string
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+    placeholder?: string
+    inputCls?: string
+  }) {
+    const [visible, setVisible] = useState(false)
+    return (
+      <div className="relative">
+        <input
+          type={visible ? "text" : "password"}
+          placeholder={placeholder ?? "••••••••"}
+          value={value}
+          onChange={onChange}
+          className={cn(inputCls, "pr-10", extraCls)}
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => setVisible((v) => !v)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
+      </div>
+    )
+  }
 
   const isLoading =
     loginMutation.isPending ||
@@ -432,13 +432,12 @@ function PasswordInput({ value, onChange, placeholder, inputCls: extraCls }: {
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* ── Left hero panel (desktop only) ── */}
-      <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] relative flex-col justify-between overflow-hidden">
-        {/* Background image overlay */}
+      <div className="hidden lg:flex lg:w-[50%] xl:w-[50%] relative flex-col justify-between overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/background.jpg')" }}
+          style={{ backgroundImage: "url('/login.jpg')" }}
         />
+
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
 
         <div className="relative z-10 px-10 pt-10">
