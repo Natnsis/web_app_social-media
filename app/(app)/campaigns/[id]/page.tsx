@@ -17,8 +17,8 @@ import {
     Church, Gift,
 } from "nasicon-react/outline"
 import { Loader, Sparkles, BarChart3, Clock, Share2 } from "lucide-react"
-import { useCampaign } from "@/hooks/use-campaigns"
-import type { Campaign } from "@/lib/api/campaigns"
+import { useCampaign, useCampaignContributions, useCampaignUpdates } from "@/hooks/use-campaigns"
+import type { Campaign, CampaignContribution, CampaignUpdate } from "@/lib/api/campaigns"
 
 function daysLeft(dateStr: string) {
     const diff = new Date(dateStr).getTime() - Date.now()
@@ -103,19 +103,6 @@ function DonateDialog({ campaign }: { campaign: Campaign }) {
     )
 }
 
-const sampleDonors = [
-    { name: "Michael T.", initials: "MT", amount: 2500, date: "2 days ago" },
-    { name: "Sarah K.", initials: "SK", amount: 1800, date: "3 days ago" },
-    { name: "Pastor David", initials: "PD", amount: 1200, date: "5 days ago" },
-    { name: "Hannah W.", initials: "HW", amount: 900, date: "1 week ago" },
-    { name: "Daniel M.", initials: "DM", amount: 750, date: "1 week ago" },
-]
-
-const sampleUpdates = [
-    { id: 1, title: "First week progress", body: "We've reached 50% of our goal in the first week! Thank you for your generous support.", date: "3 days ago" },
-    { id: 2, title: "Campaign launched", body: "We are excited to launch this campaign to support our community initiative.", date: "1 week ago" },
-]
-
 function CampaignDetailSkeleton() {
     return (
         <div className="space-y-4 p-4">
@@ -137,7 +124,7 @@ function CampaignDetailSkeleton() {
     )
 }
 
-function CampaignInfoPanel({ campaign }: { campaign: Campaign }) {
+function CampaignInfoPanel({ campaign, contributions }: { campaign: Campaign; contributions: { name: string; initials: string; amount: number }[] }) {
     const progress = getProgress(campaign.currentBalance, campaign.goalAmount)
     const remaining = daysLeft(campaign.endsAt)
 
@@ -174,7 +161,10 @@ function CampaignInfoPanel({ campaign }: { campaign: Campaign }) {
                     Top Donors
                 </p>
                 <div className="space-y-2">
-                    {sampleDonors.map((donor) => (
+                    {contributions.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-4">No donations yet</p>
+                    )}
+                    {contributions.map((donor) => (
                         <div key={donor.name} className="flex items-center gap-2.5 rounded-xl border border-border bg-background p-2.5">
                             <Avatar className="size-8">
                                 <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
@@ -228,6 +218,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     const router = useRouter()
     const [id, setId] = useState<string | null>(null)
     const { data, isLoading, isError } = useCampaign(id ?? "")
+    const { data: contributionsData, isLoading: contribLoading } = useCampaignContributions(id ?? "")
+    const { data: updatesData, isLoading: updatesLoading } = useCampaignUpdates(id ?? "")
 
     useEffect(() => {
         params.then((p) => setId(p.id))
@@ -236,6 +228,13 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     if (!id) return null
 
     const campaign = data?.data
+    const contributions = contributionsData?.data?.map((c: CampaignContribution) => ({
+        name: c.fullName,
+        initials: c.initials,
+        amount: c.amount,
+        date: c.createdAt,
+    })) ?? []
+    const updates: CampaignUpdate[] = updatesData?.data ?? []
 
     return (
         <div className="h-full overflow-y-auto bg-background">
@@ -336,7 +335,15 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                                     Recent Donors
                                 </h3>
                                 <div className="space-y-2">
-                                    {sampleDonors.map((donor) => (
+                                    {contribLoading && (
+                                        <div className="flex items-center justify-center py-4">
+                                            <Loader size={16} className="animate-spin text-muted-foreground" />
+                                        </div>
+                                    )}
+                                    {!contribLoading && contributions.length === 0 && (
+                                        <p className="text-xs text-muted-foreground text-center py-4">No donations yet</p>
+                                    )}
+                                    {!contribLoading && contributions.map((donor) => (
                                         <div key={donor.name} className="flex items-center gap-2.5">
                                             <Avatar className="size-8">
                                                 <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
@@ -345,7 +352,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                                             </Avatar>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-semibold">{donor.name}</p>
-                                                <p className="text-[11px] text-muted-foreground">{donor.date}</p>
+                                                <p className="text-[11px] text-muted-foreground">{new Date(donor.date).toLocaleDateString()}</p>
                                             </div>
                                             <span className="text-xs font-bold">${donor.amount}</span>
                                         </div>
@@ -359,14 +366,22 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                                     Updates
                                 </h3>
                                 <div className="space-y-4">
-                                    {sampleUpdates.map((update) => (
+                                    {updatesLoading && (
+                                        <div className="flex items-center justify-center py-4">
+                                            <Loader size={16} className="animate-spin text-muted-foreground" />
+                                        </div>
+                                    )}
+                                    {!updatesLoading && updates.length === 0 && (
+                                        <p className="text-xs text-muted-foreground text-center py-4">No updates yet</p>
+                                    )}
+                                    {!updatesLoading && updates.map((update, idx) => (
                                         <div key={update.id} className="space-y-1">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-xs font-semibold">{update.title}</p>
-                                                <span className="text-[10px] text-muted-foreground">{update.date}</span>
+                                                <span className="text-[10px] text-muted-foreground">{new Date(update.createdAt).toLocaleDateString()}</span>
                                             </div>
                                             <p className="text-xs text-muted-foreground leading-relaxed">{update.body}</p>
-                                            {update.id < sampleUpdates.length && <Separator />}
+                                            {idx < updates.length - 1 && <Separator />}
                                         </div>
                                     ))}
                                 </div>
@@ -472,7 +487,15 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                                     Recent Donors
                                 </h3>
                                 <div className="space-y-2">
-                                    {sampleDonors.map((donor) => (
+                                    {contribLoading && (
+                                        <div className="flex items-center justify-center py-4">
+                                            <Loader size={16} className="animate-spin text-muted-foreground" />
+                                        </div>
+                                    )}
+                                    {!contribLoading && contributions.length === 0 && (
+                                        <p className="text-xs text-muted-foreground text-center py-4">No donations yet</p>
+                                    )}
+                                    {!contribLoading && contributions.map((donor) => (
                                         <div key={donor.name} className="flex items-center gap-2.5">
                                             <Avatar className="size-8">
                                                 <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
@@ -481,7 +504,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                                             </Avatar>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-semibold">{donor.name}</p>
-                                                <p className="text-[11px] text-muted-foreground">{donor.date}</p>
+                                                <p className="text-[11px] text-muted-foreground">{new Date(donor.date).toLocaleDateString()}</p>
                                             </div>
                                             <span className="text-xs font-bold">${donor.amount}</span>
                                         </div>
@@ -495,20 +518,28 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                                     Updates
                                 </h3>
                                 <div className="space-y-4">
-                                    {sampleUpdates.map((update) => (
+                                    {updatesLoading && (
+                                        <div className="flex items-center justify-center py-4">
+                                            <Loader size={16} className="animate-spin text-muted-foreground" />
+                                        </div>
+                                    )}
+                                    {!updatesLoading && updates.length === 0 && (
+                                        <p className="text-xs text-muted-foreground text-center py-4">No updates yet</p>
+                                    )}
+                                    {!updatesLoading && updates.map((update, idx) => (
                                         <div key={update.id} className="space-y-1">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-sm font-semibold">{update.title}</p>
-                                                <span className="text-[11px] text-muted-foreground">{update.date}</span>
+                                                <span className="text-[11px] text-muted-foreground">{new Date(update.createdAt).toLocaleDateString()}</span>
                                             </div>
                                             <p className="text-sm text-muted-foreground leading-relaxed">{update.body}</p>
-                                            {update.id < sampleUpdates.length && <Separator />}
+                                            {idx < updates.length - 1 && <Separator />}
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         </section>
-                        <CampaignInfoPanel campaign={campaign} />
+                        <CampaignInfoPanel campaign={campaign} contributions={contributions} />
                     </div>
                 )}
             </div>

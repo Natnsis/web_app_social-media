@@ -10,6 +10,14 @@ export function apiGetShorts(page = 1, limit = 20) {
   return get<ShortsResponse>(`/v1/shorts?page=${page}&limit=${limit}`, token())
 }
 
+export function apiGetShort(id: string) {
+  return get<{ success: boolean; data: import("@/types").Short }>(`/v1/shorts/${id}`, token())
+}
+
+export function apiPublishShort(id: string) {
+  return post<ApiResponse>(`/v1/shorts/${id}/publish`, undefined, token())
+}
+
 export function apiLikeShort(id: string) {
   return post<ApiResponse>(`/v1/shorts/${id}/like`, undefined, token())
 }

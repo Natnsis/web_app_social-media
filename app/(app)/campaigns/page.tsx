@@ -35,14 +35,6 @@ const categoryGradients: Record<string, string> = {
     default: "from-primary to-primary/60",
 }
 
-const topDonors = [
-    { name: "Michael T.", initials: "MT", amount: 2500, badge: "Gold Donor" },
-    { name: "Sarah K.", initials: "SK", amount: 1800, badge: "Gold Donor" },
-    { name: "Pastor David", initials: "PD", amount: 1200, badge: "Silver Donor" },
-    { name: "Hannah W.", initials: "HW", amount: 900, badge: "Silver Donor" },
-    { name: "Daniel M.", initials: "DM", amount: 750, badge: "Bronze Donor" },
-]
-
 const categories = [
     { label: "All Campaigns", active: true },
     { label: "Building", active: false },
@@ -352,49 +344,20 @@ function CampaignsRightPanel({ campaigns }: { campaigns: Campaign[] }) {
 
             <div>
                 <p className="flex items-center gap-1.5 text-xs font-bold mb-3">
-                    <Gift size={14} className="text-primary" />
-                    Top Donors
-                </p>
-                <div className="space-y-2">
-                    {topDonors.map((donor) => (
-                        <div key={donor.name} className="flex items-center gap-2.5 rounded-xl border border-border bg-background p-2.5">
-                            <Avatar className="size-8">
-                                <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
-                                    {donor.initials}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                    <p className="text-xs font-semibold truncate">{donor.name}</p>
-                                    <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-primary/30 text-primary">
-                                        {donor.badge}
-                                    </Badge>
-                                </div>
-                                <p className="text-[11px] text-muted-foreground">${donor.amount.toLocaleString()} donated</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <Separator />
-
-            <div>
-                <p className="flex items-center gap-1.5 text-xs font-bold mb-3">
                     <Globe size={14} className="text-primary" />
                     Global Reach
                 </p>
                 <div className="rounded-xl border border-border bg-background p-4 space-y-2">
                     <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Countries Served</span>
-                        <span className="font-semibold text-primary">8</span>
+                        <span className="text-muted-foreground">Active Campaigns</span>
+                        <span className="font-semibold text-primary">{campaigns.length}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Active Missions</span>
-                        <span className="font-semibold">12</span>
+                        <span className="text-muted-foreground">Total Donors</span>
+                        <span className="font-semibold">{totalDonors}</span>
                     </div>
                     <p className="text-[10px] text-muted-foreground leading-relaxed">
-                        Your generosity funds mission outposts across Eastern Africa and Southern Asia.
+                        Your generosity supports faith-driven causes making a difference worldwide.
                     </p>
                 </div>
             </div>

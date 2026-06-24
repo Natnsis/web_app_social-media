@@ -7,6 +7,8 @@ import {
   apiCreateCampaign,
   apiUpdateCampaign,
   apiDeleteCampaign,
+  apiGetCampaignContributions,
+  apiGetCampaignUpdates,
 } from "@/lib/api/campaigns"
 import type { CreateCampaignPayload } from "@/lib/api/campaigns"
 
@@ -43,6 +45,22 @@ export function useUpdateCampaign(id: string) {
       qc.invalidateQueries({ queryKey: ["campaigns"] })
       qc.invalidateQueries({ queryKey: ["campaign", id] })
     },
+  })
+}
+
+export function useCampaignContributions(id: string) {
+  return useQuery({
+    queryKey: ["campaign-contributions", id],
+    queryFn: () => apiGetCampaignContributions(id),
+    enabled: !!id,
+  })
+}
+
+export function useCampaignUpdates(id: string) {
+  return useQuery({
+    queryKey: ["campaign-updates", id],
+    queryFn: () => apiGetCampaignUpdates(id),
+    enabled: !!id,
   })
 }
 

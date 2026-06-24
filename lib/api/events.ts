@@ -72,6 +72,14 @@ export function apiGetEvents(page = 1, limit = 20, churchId?: string) {
   return get<EventsResponse>(`/v1/events${query}`, token())
 }
 
+export function apiGetMyEvents(page = 1, limit = 20) {
+  return get<EventsResponse>(`/v1/events/mine?page=${page}&limit=${limit}`, token())
+}
+
+export function apiGetEventsByChurch(churchId: string, page = 1, limit = 20) {
+  return get<EventsResponse>(`/v1/events/church/${churchId}?page=${page}&limit=${limit}`, token())
+}
+
 export function apiGetEvent(id: string) {
   return get<{ success: boolean; data: EventItem }>(`/v1/events/${id}`, token())
 }

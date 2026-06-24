@@ -58,3 +58,107 @@ export function apiGetFollowingChurches() {
 export function apiGetChurch(id: string) {
   return get<ChurchDetailResponse>(`/v1/churches/${id}`, token())
 }
+
+export interface ChurchAnalyticsMetric {
+  label: string
+  value: string
+  change: string
+  positive: boolean
+}
+
+export interface ChurchAnalyticsActivity {
+  id: string
+  type: "donation" | "follower" | "engagement"
+  title: string
+  subtitle: string
+  time: string
+}
+
+export interface ChurchAnalyticsTopContent {
+  id: string
+  title: string
+  views: string
+  engagement: string
+}
+
+export interface ChurchAnalyticsResponse {
+  success: boolean
+  data: {
+    metrics: ChurchAnalyticsMetric[]
+    chartData: number[]
+    recentActivity: ChurchAnalyticsActivity[]
+    topContent: ChurchAnalyticsTopContent[]
+    periodSummary: {
+      totalReach: string
+      engagementGrowth: string
+      totalDonations: string
+    }
+  }
+}
+
+export function apiGetChurchAnalytics(churchId: string) {
+  return get<ChurchAnalyticsResponse>(`/v1/analytics/churches/${churchId}`, token())
+}
+
+export interface DashboardSummary {
+  totalReach: number
+  totalEngagements: number
+  totalDonations: number
+  totalFollowers: number
+  activeCampaigns: number
+  liveViewers: number
+}
+
+export interface DashboardGiftsResponse {
+  success: boolean
+  data: unknown[]
+}
+
+export interface DashboardTransactionsResponse {
+  success: boolean
+  data: unknown[]
+}
+
+export interface DashboardWithdrawalsResponse {
+  success: boolean
+  data: unknown[]
+}
+
+export function apiGetChurchDashboard(churchId: string) {
+  return get<{ success: boolean; data: DashboardSummary }>(`/v1/churches/${churchId}/dashboard`, token())
+}
+
+export function apiGetChurchDashboardGifts(churchId: string) {
+  return get<DashboardGiftsResponse>(`/v1/churches/${churchId}/dashboard/gifts`, token())
+}
+
+export function apiGetChurchDashboardTransactions(churchId: string) {
+  return get<DashboardTransactionsResponse>(`/v1/churches/${churchId}/dashboard/transactions`, token())
+}
+
+export function apiGetChurchDashboardWithdrawals(churchId: string) {
+  return get<DashboardWithdrawalsResponse>(`/v1/churches/${churchId}/dashboard/withdrawals`, token())
+}
+
+export function apiGetChurchMembers(churchId: string) {
+  return get<{ success: boolean; data: unknown[] }>(`/v1/churches/${churchId}/members`, token())
+}
+
+export function apiRevokeChurchMember(churchId: string, userId: string) {
+  return del<{ success: boolean }>(`/v1/churches/${churchId}/members/${userId}`, token())
+}
+
+export function apiGetChurchFollowInfo(churchId: string) {
+  return get<{ success: boolean; data: { followerCount: number; following: boolean } }>(
+    `/v1/churches/${churchId}/follow-info`,
+    token()
+  )
+}
+
+export function apiRegisterChurch(data: { name: string; description: string; address?: string }) {
+  return post<{ success: boolean; data: { id: string } }>("/v1/churches", data, token())
+}
+
+export function apiGetMyChurch() {
+  return get<ChurchDetailResponse>("/v1/churches/me/church", token())
+}

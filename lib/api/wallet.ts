@@ -70,3 +70,17 @@ export function apiAddPaymentAccount(data: {
 export function apiRequestWithdrawal(paymentAccountId: string, amountEtb: number) {
   return post<ApiResponse>("/v1/wallet/withdraw", { paymentAccountId, amountEtb }, token())
 }
+
+export function apiCampaignDonate(campaignId: string, amount: number, paymentAccountId?: string) {
+  return post<ApiResponse>(`/v1/billing/campaigns/${campaignId}/donate`, {
+    amount,
+    paymentAccountId,
+  }, token())
+}
+
+export function apiGetTransactionStatus(txRef: string) {
+  return get<ApiResponse<{ status: string; amount: number; currency: string }>>(
+    `/v1/billing/transactions/${txRef}/status`,
+    token()
+  )
+}

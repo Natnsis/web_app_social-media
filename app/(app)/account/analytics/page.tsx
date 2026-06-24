@@ -7,10 +7,11 @@ import { Heart, Eye } from "nasicon-react/outline"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { useChurchAnalytics } from "@/hooks/use-analytics"
 
 type Range = "week" | "month" | "year"
 
-type MetricCard = {
+type MetricCardProps = {
     label: string
     value: string
     change: string
@@ -39,28 +40,12 @@ const dateRanges: { key: Range; label: string }[] = [
     { key: "year", label: "This Year" },
 ]
 
-const metricCards: MetricCard[] = [
-    { label: "Total Reach", value: "24.8k", change: "+12.5%", positive: true, Icon: Eye },
-    { label: "Engagement Rate", value: "18.2%", change: "+3.2%", positive: true, Icon: Heart },
-    { label: "New Followers", value: "1,482", change: "+8.1%", positive: true, Icon: Users },
-    { label: "Total Donations", value: "$12,430", change: "+22.4%", positive: true, Icon: DollarSign },
-]
-
-const recentActivity: ActivityItem[] = [
-    { id: "1", type: "donation", title: "New donation received", subtitle: "Anonymous gave $250", time: "2 min ago" },
-    { id: "2", type: "follower", title: "New followers", subtitle: "Grace Chapel +12 new followers", time: "15 min ago" },
-    { id: "3", type: "engagement", title: "Post engagement spike", subtitle: "Sunday sermon reached 3.2k", time: "1 hr ago" },
-    { id: "4", type: "donation", title: "Campaign milestone", subtitle: "Building Fund at 78% of goal", time: "3 hr ago" },
-    { id: "5", type: "follower", title: "New followers", subtitle: "Youth Ministry +8 new followers", time: "5 hr ago" },
-]
-
-const topContent: TopContent[] = [
-    { id: "1", title: "Sunday Morning Worship", views: "12.4k", engagement: "8.2%" },
-    { id: "2", title: "Youth Conference 2026", views: "8.7k", engagement: "6.9%" },
-    { id: "3", title: "Weekly Bible Study", views: "5.2k", engagement: "11.3%" },
-]
-
-const chartData = [40, 65, 45, 80, 55, 90, 70, 85, 60, 75, 50, 88]
+const icnMap: Record<string, React.ElementType> = {
+    Eye,
+    Heart,
+    Users,
+    DollarSign,
+}
 
 function SkeletonMetricCards() {
     return (
@@ -79,7 +64,7 @@ function SkeletonMetricCards() {
     )
 }
 
-function MetricCard({ label, value, change, positive, Icon }: MetricCard) {
+function MetricCard({ label, value, change, positive, Icon }: MetricCardProps) {
     return (
         <div className="rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/20">
             <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -94,8 +79,8 @@ function MetricCard({ label, value, change, positive, Icon }: MetricCard) {
     )
 }
 
-function ChartSection() {
-    const maxVal = Math.max(...chartData)
+function ChartSection({ data }: { data: number[] }) {
+    const maxVal = Math.max(...data, 1)
     return (
         <div className="rounded-2xl border border-border bg-card p-4 lg:p-6">
             <div className="flex items-center justify-between">
@@ -112,7 +97,7 @@ function ChartSection() {
                 </select>
             </div>
             <div className="mt-6 flex h-48 items-end gap-1.5 lg:h-56">
-                {chartData.map((h, i) => (
+                {data.map((h, i) => (
                     <div key={i} className="group relative flex flex-1 flex-col items-center justify-end">
                         <div
                             className="w-full rounded-t-lg bg-primary transition-all hover:bg-primary/80"
@@ -134,12 +119,12 @@ function ChartSection() {
     )
 }
 
-function ActivityFeed() {
+function ActivityFeed({ items }: { items: ActivityItem[] }) {
     return (
         <div className="rounded-2xl border border-border bg-card p-4 lg:p-6">
             <h3 className="mb-4 text-sm font-bold">Recent Activity</h3>
             <div className="space-y-1">
-                {recentActivity.map((item) => (
+                {items.map((item) => (
                     <div key={item.id} className="flex items-start gap-3 rounded-xl p-2.5 transition-colors hover:bg-muted/50">
                         <div className={cn(
                             "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg",
@@ -163,7 +148,7 @@ function ActivityFeed() {
     )
 }
 
-function TopContentSection() {
+function TopContentSection({ items }: { items: TopContent[] }) {
     return (
         <div className="rounded-2xl border border-border bg-card p-4 lg:p-6">
             <div className="mb-4 flex items-center justify-between">
@@ -171,7 +156,7 @@ function TopContentSection() {
                 <Button variant="ghost" size="xs" className="rounded-full text-primary text-[10px]">View all</Button>
             </div>
             <div className="space-y-2">
-                {topContent.map((item) => (
+                {items.map((item) => (
                     <div key={item.id} className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5">
                         <div className="min-w-0 flex-1">
                             <p className="truncate text-xs font-semibold">{item.title}</p>
@@ -188,7 +173,7 @@ function TopContentSection() {
     )
 }
 
-function SummaryPanel() {
+function SummaryPanel({ totalReach, engagementGrowth, totalDonations }: { totalReach: string; engagementGrowth: string; totalDonations: string }) {
     return (
         <aside className="hidden shrink-0 flex-col gap-4 xl:flex xl:w-72">
             <div className="rounded-2xl border border-border bg-card p-4">
@@ -196,17 +181,17 @@ function SummaryPanel() {
                     <p className="text-xs font-bold uppercase tracking-wider text-primary-foreground/70">Period Summary</p>
                     <div className="mt-4 space-y-3">
                         <div>
-                            <p className="text-2xl font-black">24.8k</p>
+                            <p className="text-2xl font-black">{totalReach}</p>
                             <p className="text-[11px] text-primary-foreground/70">total reach</p>
                         </div>
                         <Separator className="bg-primary-foreground/20" />
                         <div>
-                            <p className="text-2xl font-black">+18%</p>
+                            <p className="text-2xl font-black">{engagementGrowth}</p>
                             <p className="text-[11px] text-primary-foreground/70">engagement growth</p>
                         </div>
                         <Separator className="bg-primary-foreground/20" />
                         <div>
-                            <p className="text-2xl font-black">$12.4k</p>
+                            <p className="text-2xl font-black">{totalDonations}</p>
                             <p className="text-[11px] text-primary-foreground/70">total donations</p>
                         </div>
                     </div>
@@ -236,14 +221,19 @@ function SummaryPanel() {
 
 export default function AnalyticsPage() {
     const [range, setRange] = useState<Range>("month")
-    const [loading, _setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+    const { data: analyticsData, isLoading, isError, error, refetch } = useChurchAnalytics(range)
 
-    if (error) {
+    const metrics = analyticsData?.data?.metrics ?? []
+    const chartData = analyticsData?.data?.chartData ?? []
+    const activityItems = analyticsData?.data?.recentActivity ?? []
+    const topContentItems = analyticsData?.data?.topContent ?? []
+    const summary = analyticsData?.data?.periodSummary ?? { totalReach: "0", engagementGrowth: "0", totalDonations: "$0" }
+
+    if (isError) {
         return (
             <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
-                <p className="text-sm text-muted-foreground">{error}</p>
-                <Button variant="outline" size="sm" onClick={() => setError(null)}>Try again</Button>
+                <p className="text-sm text-muted-foreground">{(error as Error)?.message ?? "Failed to load analytics"}</p>
+                <Button variant="outline" size="sm" onClick={() => refetch()}>Try again</Button>
             </div>
         )
     }
@@ -278,19 +268,20 @@ export default function AnalyticsPage() {
 
                         {/* Metric cards */}
                         <div className="grid grid-cols-2 gap-3">
-                            {loading ? <SkeletonMetricCards /> : metricCards.map((card) => (
-                                <MetricCard key={card.label} {...card} />
-                            ))}
+                            {isLoading ? <SkeletonMetricCards /> : metrics.map((card) => {
+                                const Icon = icnMap[card.label === "Total Reach" ? "Eye" : card.label === "Engagement Rate" ? "Heart" : card.label === "New Followers" ? "Users" : "DollarSign"] ?? Eye
+                                return <MetricCard key={card.label} {...card} Icon={Icon} />
+                            })}
                         </div>
 
                         {/* Chart */}
-                        <ChartSection />
+                        <ChartSection data={chartData} />
 
                         {/* Activity feed */}
-                        <ActivityFeed />
+                        <ActivityFeed items={activityItems} />
 
                         {/* Top content */}
-                        <TopContentSection />
+                        <TopContentSection items={topContentItems} />
                     </div>
                 </div>
             </div>
@@ -321,22 +312,27 @@ export default function AnalyticsPage() {
                         <div className="min-w-0 flex-1 space-y-5">
                             {/* Metric cards */}
                             <div className="grid grid-cols-4 gap-4">
-                                {loading ? <SkeletonMetricCards /> : metricCards.map((card) => (
-                                    <MetricCard key={card.label} {...card} />
-                                ))}
+                                {isLoading ? <SkeletonMetricCards /> : metrics.map((card) => {
+                                    const Icon = icnMap[card.label === "Total Reach" ? "Eye" : card.label === "Engagement Rate" ? "Heart" : card.label === "New Followers" ? "Users" : "DollarSign"] ?? Eye
+                                    return <MetricCard key={card.label} {...card} Icon={Icon} />
+                                })}
                             </div>
 
                             {/* Chart */}
-                            <ChartSection />
+                            <ChartSection data={chartData} />
 
                             <div className="grid grid-cols-2 gap-5">
-                                <ActivityFeed />
-                                <TopContentSection />
+                                <ActivityFeed items={activityItems} />
+                                <TopContentSection items={topContentItems} />
                             </div>
                         </div>
 
                         {/* Summary panel */}
-                        <SummaryPanel />
+                        <SummaryPanel
+                            totalReach={summary.totalReach}
+                            engagementGrowth={summary.engagementGrowth}
+                            totalDonations={summary.totalDonations}
+                        />
                     </div>
                 </div>
             </div>

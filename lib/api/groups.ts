@@ -49,3 +49,27 @@ export function apiJoinGroup(id: string) {
 export function apiJoinGroupRequest(id: string) {
   return post<ApiResponse<{ id: string }>>(`/v1/groups/${id}/join-requests`, undefined, token())
 }
+
+export function apiApproveJoinRequest(groupId: string, userId: string) {
+  return post<ApiResponse>(`/v1/groups/${groupId}/join-requests/${userId}/approve`, undefined, token())
+}
+
+export function apiRejectJoinRequest(groupId: string, userId: string) {
+  return post<ApiResponse>(`/v1/groups/${groupId}/join-requests/${userId}/reject`, undefined, token())
+}
+
+export function apiRemoveGroupMember(groupId: string, userId: string) {
+  return del<ApiResponse>(`/v1/groups/${groupId}/members/${userId}`, token())
+}
+
+export function apiBanGroupMember(groupId: string, userId: string) {
+  return post<ApiResponse>(`/v1/groups/${groupId}/bans/${userId}`, undefined, token())
+}
+
+export function apiLeaveGroup(groupId: string) {
+  return post<ApiResponse>(`/v1/groups/${groupId}/leave`, undefined, token())
+}
+
+export function apiInviteGroupMember(groupId: string, userId: string) {
+  return post<ApiResponse>(`/v1/groups/${groupId}/members/invite/${userId}`, undefined, token())
+}

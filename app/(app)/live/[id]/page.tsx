@@ -15,14 +15,6 @@ function getInitials(name: string) {
     return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
 }
 
-const seedComments = [
-    { id: 1, user: "Sister Sara", initials: "SS", text: "Amen! 🙏 This is so anointed!" },
-    { id: 2, user: "Brother Yared", initials: "BY", text: "Glory to God! Keep worshipping!" },
-    { id: 3, user: "Pastor Elias", initials: "PE", text: "The presence of God is here 🔥" },
-    { id: 4, user: "Faith Walker", initials: "FW", text: "Watching from Addis. God bless!" },
-    { id: 5, user: "Hope Ministry", initials: "HM", text: "This song always moves me 😭❤️" },
-]
-
 type Comment = { id: number; user: string; initials: string; text: string }
 
 export default function LivePage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,7 +23,7 @@ export default function LivePage({ params }: { params: Promise<{ id: string }> }
     const [liked, setLiked] = useState(false)
     const [likeCount, setLikeCount] = useState(0)
     const [comment, setComment] = useState("")
-    const [comments, setComments] = useState<Comment[]>(seedComments)
+    const [comments, setComments] = useState<Comment[]>([])
     const bottomRef = useRef<HTMLDivElement>(null)
     const toggleFollow = useToggleFollowChurch()
     const [isFollowing, setIsFollowing] = useState(false)
@@ -48,26 +40,6 @@ export default function LivePage({ params }: { params: Promise<{ id: string }> }
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" })
     }, [comments])
-
-    // Simulate incoming comments
-    useEffect(() => {
-        const names = [
-            { user: "Dawit T.", initials: "DT", text: "Hallelujah! 🙌" },
-            { user: "Miriam A.", initials: "MA", text: "This worship is incredible!" },
-            { user: "Samuel K.", initials: "SK", text: "God is good all the time 🙏" },
-            { user: "Ruth B.", initials: "RB", text: "Watching from Nairobi ❤️" },
-        ]
-        let i = 0
-        const interval = setInterval(() => {
-            const msg = names[i % names.length]
-            setComments((prev) => [
-                ...prev,
-                { id: Date.now(), user: msg.user, initials: msg.initials, text: msg.text },
-            ])
-            i++
-        }, 4000)
-        return () => clearInterval(interval)
-    }, [])
 
     function sendComment() {
         if (!comment.trim()) return

@@ -131,3 +131,29 @@ export function apiUpdateProfile(formData: FormData, passedToken?: string) {
   const authToken = passedToken || token()
   return patchFormData<UserProfileResponse>("/v1/users/me", formData, authToken || "")
 }
+
+export interface SearchUsersResponse {
+  success: boolean
+  data: Array<{
+    id: string
+    fullName: string
+    avatarUrl: string | null
+    bio: string | null
+  }>
+}
+
+export function apiSearchUsers(query: string, page = 1, limit = 20) {
+  return get<SearchUsersResponse>(`/v1/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`, "")
+}
+
+export function apiUpdateLocation(latitude: number, longitude: number) {
+  const authToken = token()
+  return fetch(`${BASE}/v1/users/me/location`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    },
+    body: JSON.stringify({ latitude, longitude }),
+  }).then((r) => r.json()) as Promise<{ success: boolean }>
+}

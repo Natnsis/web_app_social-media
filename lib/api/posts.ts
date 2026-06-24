@@ -28,6 +28,10 @@ export function apiGetSavedPosts(page = 1, limit = 20) {
   return get<PostsResponse>(`/v1/posts/saved?page=${page}&limit=${limit}`, token())
 }
 
+export function apiGetPostsByChurch(churchId: string, page = 1, limit = 20) {
+  return get<PostsResponse>(`/v1/posts/church/${churchId}?page=${page}&limit=${limit}`, token())
+}
+
 export function apiCreatePost(payload: CreatePostPayload) {
   return post<CreatePostResponse>("/v1/posts", payload, token())
 }

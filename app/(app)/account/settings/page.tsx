@@ -13,40 +13,8 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { useAuthStore } from "@/lib/store/auth"
 import { useProfile, useUpdateProfile } from "@/hooks/use-profile"
+import { useChurch } from "@/hooks/use-church"
 import { updateProfileSchema } from "@/lib/validation/user"
-
-const stats = [
-    {
-        label: "Subscribers",
-        value: "12k",
-        sub: "+8% this week",
-        subColor: "text-green-500",
-        bg: "bg-blue-50 dark:bg-blue-950",
-        iconBg: "bg-blue-100 dark:bg-blue-900",
-        Icon: User,
-        iconColor: "text-blue-500",
-    },
-    {
-        label: "Campaigns",
-        value: "42",
-        sub: "Active Global Projects",
-        subColor: "text-muted-foreground",
-        bg: "bg-orange-50 dark:bg-orange-950",
-        iconBg: "bg-orange-100 dark:bg-orange-900",
-        Icon: Heart,
-        iconColor: "text-orange-500",
-    },
-    {
-        label: "Live Viewers",
-        value: "489",
-        sub: "● Ongoing Service",
-        subColor: "text-red-500",
-        bg: "bg-pink-50 dark:bg-pink-950",
-        iconBg: "bg-pink-100 dark:bg-pink-900",
-        Icon: BullseyeArrow,
-        iconColor: "text-pink-500",
-    },
-]
 
 const financialItems = [
     { label: "Bank & Payout", sub: "Linked: CBE ****3421", Icon: Bank },
@@ -71,7 +39,43 @@ export default function AccountSettingsPage() {
     const avatarInputRef = useRef<HTMLInputElement>(null)
 
     const { data: profileData, isLoading: profileLoading } = useProfile()
+    const churchId = profileData?.data?.church?.id ?? null
+    const { data: churchData } = useChurch(churchId)
     const updateProfileMutation = useUpdateProfile()
+
+    const churchCount = churchData?.data?._count
+    const stats = [
+        {
+            label: "Subscribers",
+            value: churchCount ? `${churchCount.followers.toLocaleString()}` : "-",
+            sub: churchCount ? `${churchCount.followers} followers` : "Loading...",
+            subColor: "text-green-500",
+            bg: "bg-blue-50 dark:bg-blue-950",
+            iconBg: "bg-blue-100 dark:bg-blue-900",
+            Icon: User,
+            iconColor: "text-blue-500",
+        },
+        {
+            label: "Campaigns",
+            value: churchCount ? `${churchCount.campaigns}` : "-",
+            sub: churchCount ? `${churchCount.campaigns} campaigns` : "Loading...",
+            subColor: "text-muted-foreground",
+            bg: "bg-orange-50 dark:bg-orange-950",
+            iconBg: "bg-orange-100 dark:bg-orange-900",
+            Icon: Heart,
+            iconColor: "text-orange-500",
+        },
+        {
+            label: "Posts",
+            value: churchCount ? `${churchCount.posts}` : "-",
+            sub: churchCount ? `${churchCount.posts} published` : "Loading...",
+            subColor: "text-muted-foreground",
+            bg: "bg-pink-50 dark:bg-pink-950",
+            iconBg: "bg-pink-100 dark:bg-pink-900",
+            Icon: BullseyeArrow,
+            iconColor: "text-pink-500",
+        },
+    ]
 
     useEffect(() => {
         if (profileData?.data) {
