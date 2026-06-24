@@ -138,14 +138,166 @@ export default function AccountSettingsPage() {
 
     return (
         <div className="flex h-full w-full flex-col overflow-hidden bg-background">
-            <header className="flex shrink-0 items-center gap-2 px-4 py-3">
+            {/* Mobile header */}
+            <header className="flex shrink-0 items-center gap-2 px-4 py-3 lg:hidden">
                 <Link href="/account" className="text-primary">
                     <ChevronLeft size={22} />
                 </Link>
                 <h1 className="text-lg font-bold text-primary">Account Settings</h1>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-6">
+            {/* Desktop layout */}
+            <div className="hidden h-full overflow-y-auto lg:block">
+                <div className="mx-auto max-w-5xl px-8 py-8">
+                    <div className="mb-8">
+                        <h1 className="text-3xl font-black tracking-tight">Account Settings</h1>
+                        <p className="mt-1 text-sm text-muted-foreground">Manage your profile, preferences, and account details</p>
+                    </div>
+                    <div className="grid grid-cols-[1fr_360px] gap-8">
+                        <div className="space-y-6">
+
+                            {/* Edit Profile */}
+                            <section className="rounded-2xl border border-border bg-card p-6">
+                                <h2 className="text-lg font-black">Edit Profile</h2>
+                                <p className="mt-1 text-sm text-muted-foreground">Update your personal information and photo.</p>
+
+                                <form onSubmit={handleProfileSubmit} className="mt-6 space-y-5">
+                                    <div className="flex items-center gap-5">
+                                        <div className="relative">
+                                            <Avatar className="size-20 cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+                                                {avatarPreview ? (
+                                                    <AvatarImage src={avatarPreview} />
+                                                ) : profileData?.data?.avatarUrl ? (
+                                                    <AvatarImage src={profileData.data.avatarUrl} />
+                                                ) : (
+                                                    <AvatarFallback className="bg-primary/20 text-primary text-2xl font-bold">
+                                                        {user?.initials ?? "AT"}
+                                                    </AvatarFallback>
+                                                )}
+                                            </Avatar>
+                                            <button type="button" onClick={() => avatarInputRef.current?.click()} className="absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-background">
+                                                <Camera size={14} />
+                                            </button>
+                                            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                                        </div>
+                                        <div className="text-sm text-muted-foreground">
+                                            <p className="font-medium text-foreground">Profile photo</p>
+                                            <p>PNG, JPG up to 5MB</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="mb-1.5 block text-sm font-semibold text-foreground">Full Name</label>
+                                            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" />
+                                            {fieldErrors.fullName && <p className="mt-1 text-xs text-destructive">{fieldErrors.fullName}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="mb-1.5 block text-sm font-semibold text-foreground">Email</label>
+                                            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" />
+                                            {fieldErrors.email && <p className="mt-1 text-xs text-destructive">{fieldErrors.email}</p>}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1.5 block text-sm font-semibold text-foreground">Phone Number</label>
+                                        <Input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+251912345678" />
+                                        {fieldErrors.phoneNumber && <p className="mt-1 text-xs text-destructive">{fieldErrors.phoneNumber}</p>}
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1.5 block text-sm font-semibold text-foreground">Bio</label>
+                                        <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell us about yourself..." rows={3} />
+                                        {fieldErrors.bio && <p className="mt-1 text-xs text-destructive">{fieldErrors.bio}</p>}
+                                    </div>
+
+                                    {fieldErrors.form && (
+                                        <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{fieldErrors.form}</div>
+                                    )}
+
+                                    {successMsg && (
+                                        <div className="rounded-xl bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950 dark:text-green-400">{successMsg}</div>
+                                    )}
+
+                                    <Button type="submit" disabled={updateProfileMutation.isPending} className="rounded-xl">
+                                        {updateProfileMutation.isPending ? (
+                                            <><Loader2 size={16} className="animate-spin" /> Saving...</>
+                                        ) : (
+                                            "Save Changes"
+                                        )}
+                                    </Button>
+                                </form>
+                            </section>
+
+                            {/* Personal Preferences */}
+                            <section className="rounded-2xl border border-border bg-card p-6">
+                                <h2 className="text-lg font-black">Personal Preferences</h2>
+                                <p className="mt-1 text-sm text-muted-foreground">Manage your notification and privacy settings.</p>
+                                <div className="mt-6 space-y-2">
+                                    {[
+                                        { label: "Notifications", sub: "Push & email alerts", Icon: Bell, state: notifications, set: setNotifications },
+                                        { label: "Private Profile", sub: "Only followers see your posts", Icon: Shield, state: privateProfile, set: setPrivateProfile },
+                                        { label: "Two-Factor Auth", sub: "Extra login security", Icon: Shield, state: twoFactor, set: setTwoFactor },
+                                    ].map((item) => (
+                                        <div key={item.label}
+                                            className="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
+                                            <div className="flex size-10 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950">
+                                                <item.Icon size={18} className="text-primary" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-semibold">{item.label}</p>
+                                                <p className="text-xs text-muted-foreground">{item.sub}</p>
+                                            </div>
+                                            <Switch checked={item.state} onCheckedChange={item.set} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
+                            {/* Financial */}
+                            <section className="rounded-2xl border border-border bg-card p-6">
+                                <h2 className="text-lg font-black">Financial &amp; Administration</h2>
+                                <p className="mt-1 text-sm text-muted-foreground">Manage payouts, reports, and team roles.</p>
+                                <div className="mt-6 space-y-2">
+                                    {financialItems.map((item) => (
+                                        <button key={item.label}
+                                            className="flex w-full items-center gap-3 rounded-xl border border-border bg-background p-4 hover:bg-muted/50 transition-colors">
+                                            <div className="flex size-10 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950">
+                                                <item.Icon size={18} className="text-primary" />
+                                            </div>
+                                            <div className="flex-1 text-left">
+                                                <p className="text-sm font-semibold">{item.label}</p>
+                                                <p className="text-xs text-muted-foreground">{item.sub}</p>
+                                            </div>
+                                            <ChevronRight size={16} className="text-muted-foreground" />
+                                        </button>
+                                    ))}
+                                </div>
+                            </section>
+
+                        </div>
+
+                        {/* Desktop Right Panel — Stats */}
+                        <aside className="space-y-4">
+                            {stats.map((s) => (
+                                <div key={s.label} className={`flex items-center gap-4 rounded-2xl p-5 ${s.bg}`}>
+                                    <div className={`flex size-12 shrink-0 items-center justify-center rounded-full ${s.iconBg}`}>
+                                        <s.Icon size={22} className={s.iconColor} />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">{s.label}</p>
+                                        <p className="text-2xl font-bold">{s.value}</p>
+                                        <p className={`text-xs font-medium ${s.subColor}`}>{s.sub}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </aside>
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile layout */}
+            <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-6 lg:hidden">
                 {/* Edit Profile */}
                 <section className="rounded-2xl border border-border bg-card p-4">
                     <h2 className="text-sm font-black">Edit Profile</h2>

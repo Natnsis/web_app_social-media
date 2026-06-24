@@ -51,6 +51,10 @@ export function apiUnfollowChurch(id: string) {
   return del<{ success: boolean }>(`/v1/churches/${id}/follow`, token())
 }
 
+export function apiGetFollowingChurches() {
+  return get<{ success: boolean; data: NearbyChurch[] }>("/v1/churches/me/following", token())
+}
+
 export function apiGetChurch(id: string) {
   return get<ChurchDetailResponse>(`/v1/churches/${id}`, token())
 }

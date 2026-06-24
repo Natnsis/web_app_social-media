@@ -8,14 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Xmark, Heart, Send, Eye, Users } from "nasicon-react/outline"
 import { Heart as HeartSolid } from "nasicon-react/solid"
+import { useLiveStream } from "@/hooks/use-livestream"
+import { useToggleFollowChurch } from "@/hooks/use-nearby-churches"
 
-const liveData: Record<string, { name: string; initials: string; viewers: number; topic: string }> = {
-    "grace-ch": { name: "Grace Church", initials: "GC", viewers: 1240, topic: "Sunday Morning Worship" },
-    "hope-val": { name: "Hope Valley", initials: "HV", viewers: 892, topic: "Evening Prayer Service" },
-    "unity": { name: "Unity Church", initials: "UN", viewers: 540, topic: "Bible Study — John 15" },
-    "the-well": { name: "The Well", initials: "TW", viewers: 3100, topic: "Worship Night Live" },
-    "new-life": { name: "New Life", initials: "NL", viewers: 720, topic: "Youth Service" },
-    "zion": { name: "Zion Ministries", initials: "ZN", viewers: 450, topic: "Midweek Service" },
+function getInitials(name: string) {
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
 }
 
 const seedComments = [
@@ -36,11 +33,16 @@ export default function LivePage({ params }: { params: Promise<{ id: string }> }
     const [comment, setComment] = useState("")
     const [comments, setComments] = useState<Comment[]>(seedComments)
     const bottomRef = useRef<HTMLDivElement>(null)
+    const toggleFollow = useToggleFollowChurch()
+    const [isFollowing, setIsFollowing] = useState(false)
 
     // Resolve async params
     useEffect(() => {
         params.then((p) => setId(p.id))
     }, [params])
+
+    const { data: streamData } = useLiveStream(id)
+    const stream = streamData?.data
 
     // Auto-scroll comments
     useEffect(() => {
@@ -81,103 +83,212 @@ export default function LivePage({ params }: { params: Promise<{ id: string }> }
         setLikeCount((v) => (liked ? v - 1 : v + 1))
     }
 
+    function handleFollow() {
+        if (!stream) return
+        setIsFollowing((v) => !v)
+        toggleFollow.mutate({ id: stream.churchId, following: isFollowing })
+    }
+
     if (!id) return null
-    const stream = liveData[id] ?? { name: id, initials: "?", viewers: 0, topic: "Live Stream" }
+    const displayName = stream?.church?.name ?? id
+    const displayInitials = stream?.church?.name ? getInitials(stream.church.name) : "?"
+    const displayViewers = stream?.viewerCount ?? 0
+    const displayTopic = stream?.title ?? "Live Stream"
 
     return (
-        <div className="relative flex h-full w-full flex-col overflow-hidden bg-black">
+        <>
+            {/* Desktop layout */}
+            <div className="hidden h-full lg:flex">
+                <div className="relative flex flex-1 flex-col overflow-hidden bg-black">
+                    {/* Video placeholder */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
+                        <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                            <div className="size-32 rounded-full bg-primary/40" />
+                        </div>
+                    </div>
 
-            {/* Video placeholder */}
-            <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
-                <div className="absolute inset-0 flex items-center justify-center opacity-20">
-                    <div className="size-32 rounded-full bg-primary/40" />
-                </div>
-            </div>
+                    {/* Top bar */}
+                    <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-6 pt-5 pb-8 bg-gradient-to-b from-black/70 to-transparent">
+                        <button onClick={() => router.back()}
+                            className="flex size-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70">
+                            <Xmark size={20} />
+                        </button>
+                        <div className="flex items-center gap-3">
+                            <Badge className="bg-red-500 text-white border-none text-xs gap-1.5 rounded-full px-3 py-1">
+                                <div className="size-2 rounded-full bg-white animate-pulse" />
+                                LIVE
+                            </Badge>
+                            <div className="flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5">
+                                <Eye size={14} className="text-white" />
+                                <span className="text-xs font-semibold text-white">
+                                    {(displayViewers + likeCount).toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                        <button onClick={handleFollow} className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90">
+                            <Users size={16} />
+                            {isFollowing ? "Following" : "Follow"}
+                        </button>
+                    </div>
 
-            {/* Top bar */}
-            <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-4 pb-8 bg-gradient-to-b from-black/70 to-transparent">
-                <button onClick={() => router.back()}
-                    className="flex size-8 items-center justify-center rounded-full bg-black/50 text-white">
-                    <Xmark size={18} />
-                </button>
+                    {/* Creator info */}
+                    <div className="absolute left-6 top-24 z-10 flex items-center gap-3">
+                        <Avatar className="size-14 ring-2 ring-white">
+                            <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
+                                {displayInitials}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <p className="text-lg font-bold text-white">{displayName}</p>
+                            <p className="text-sm text-white/70">{displayTopic}</p>
+                        </div>
+                    </div>
 
-                <div className="flex items-center gap-2">
-                    <Badge className="bg-red-500 text-white border-none text-[11px] gap-1 rounded-full px-2 py-0.5">
-                        <div className="size-1.5 rounded-full bg-white animate-pulse" />
-                        LIVE
-                    </Badge>
-                    <div className="flex items-center gap-1 rounded-full bg-black/50 px-2 py-1">
-                        <Eye size={12} className="text-white" />
-                        <span className="text-[11px] font-semibold text-white">
-                            {(stream.viewers + likeCount).toLocaleString()}
-                        </span>
+                    {/* Desktop: Right action rail */}
+                    <div className="absolute right-6 bottom-8 z-10 flex flex-col items-center gap-5">
+                        <button onClick={handleLike} className="flex flex-col items-center gap-1.5 group">
+                            {liked
+                                ? <HeartSolid size={32} className="text-red-500" />
+                                : <Heart size={32} className="text-white group-hover:text-red-400 transition-colors" />}
+                            <span className="text-xs font-semibold text-white">{likeCount > 0 ? likeCount : ""}</span>
+                        </button>
                     </div>
                 </div>
 
-                <button className="flex items-center gap-1 rounded-full bg-primary px-3 py-1.5">
-                    <Users size={14} className="text-white" />
-                    <span className="text-[11px] font-semibold text-white">Follow</span>
-                </button>
-            </div>
-
-            {/* Creator info */}
-            <div className="absolute left-4 top-20 z-10 flex items-center gap-2">
-                <Avatar size="lg" className="ring-2 ring-white">
-                    <AvatarFallback className="bg-primary text-primary-foreground font-bold">
-                        {stream.initials}
-                    </AvatarFallback>
-                </Avatar>
-                <div>
-                    <p className="text-sm font-bold text-white">{stream.name}</p>
-                    <p className="text-xs text-white/70">{stream.topic}</p>
-                </div>
-            </div>
-
-            {/* Comments overlay — scrollable, fades at top */}
-            <div className="absolute inset-x-0 bottom-16 z-10 flex max-h-[55%] flex-col justify-end overflow-hidden px-4 pb-2">
-                <div className="flex flex-col gap-2 overflow-y-auto [mask-image:linear-gradient(transparent_0%,black_30%)]">
-                    {comments.map((c) => (
-                        <div key={c.id} className="flex items-start gap-2">
-                            <Avatar size="sm" className="shrink-0">
-                                <AvatarFallback className="bg-primary/60 text-white text-[10px]">{c.initials}</AvatarFallback>
-                            </Avatar>
-                            <div className="rounded-2xl bg-black/50 px-3 py-1.5 backdrop-blur-sm">
-                                <span className="text-[11px] font-bold text-primary">{c.user} </span>
-                                <span className="text-[12px] text-white">{c.text}</span>
+                {/* Desktop: Chat sidebar */}
+                <div className="flex w-[400px] shrink-0 flex-col border-l border-white/10 bg-background">
+                    <div className="border-b border-border px-5 py-4">
+                        <h2 className="text-base font-bold">Live Chat</h2>
+                        <p className="text-xs text-muted-foreground mt-0.5">{comments.length} messages</p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                        {comments.map((c) => (
+                            <div key={c.id} className="flex items-start gap-2.5">
+                                <Avatar className="size-8 shrink-0">
+                                    <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">{c.initials}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="text-xs font-bold text-foreground">{c.user}</p>
+                                    <p className="text-sm text-muted-foreground">{c.text}</p>
+                                </div>
                             </div>
+                        ))}
+                        <div ref={bottomRef} />
+                    </div>
+                    <div className="border-t border-border px-4 py-3">
+                        <div className="flex items-center gap-2">
+                            <Avatar className="size-8 shrink-0">
+                                <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">AT</AvatarFallback>
+                            </Avatar>
+                            <Input
+                                placeholder="Say something..."
+                                value={comment}
+                                onChange={(e) => setComment(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && sendComment()}
+                                className="h-10 flex-1 rounded-xl border-border bg-muted/50"
+                            />
+                            <Button size="icon" onClick={sendComment} className="shrink-0 rounded-xl">
+                                <Send size={16} />
+                            </Button>
                         </div>
-                    ))}
-                    <div ref={bottomRef} />
+                    </div>
                 </div>
             </div>
 
-            {/* Right action rail */}
-            <div className="absolute right-3 bottom-20 z-10 flex flex-col items-center gap-4">
-                <button onClick={handleLike} className="flex flex-col items-center gap-1">
-                    {liked
-                        ? <HeartSolid size={28} className="text-red-500" />
-                        : <Heart size={28} className="text-white" />}
-                    <span className="text-[11px] font-semibold text-white">{likeCount > 0 ? likeCount : ""}</span>
-                </button>
-            </div>
+            {/* Mobile layout */}
+            <div className="relative flex h-full w-full flex-col overflow-hidden bg-black lg:hidden">
+                {/* Video placeholder */}
+                <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
+                    <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                        <div className="size-32 rounded-full bg-primary/40" />
+                    </div>
+                </div>
 
-            {/* Comment input */}
-            <div className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-black/70 px-3 py-2 backdrop-blur-sm">
-                <Avatar size="sm">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">AT</AvatarFallback>
-                </Avatar>
-                <Input
-                    placeholder="Say something..."
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && sendComment()}
-                    className="h-9 flex-1 rounded-full border-white/20 bg-white/10 text-white placeholder:text-white/50 focus-visible:border-white/40 focus-visible:ring-white/20"
-                />
-                <Button size="icon-sm" onClick={sendComment}
-                    className="shrink-0 rounded-full bg-primary">
-                    <Send size={16} />
-                </Button>
+                {/* Top bar */}
+                <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-4 pb-8 bg-gradient-to-b from-black/70 to-transparent">
+                    <button onClick={() => router.back()}
+                        className="flex size-8 items-center justify-center rounded-full bg-black/50 text-white">
+                        <Xmark size={18} />
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                        <Badge className="bg-red-500 text-white border-none text-[11px] gap-1 rounded-full px-2 py-0.5">
+                            <div className="size-1.5 rounded-full bg-white animate-pulse" />
+                            LIVE
+                        </Badge>
+                        <div className="flex items-center gap-1 rounded-full bg-black/50 px-2 py-1">
+                            <Eye size={12} className="text-white" />
+                            <span className="text-[11px] font-semibold text-white">
+                                {(displayViewers + likeCount).toLocaleString()}
+                            </span>
+                        </div>
+                    </div>
+
+                    <button onClick={handleFollow} className="flex items-center gap-1 rounded-full bg-primary px-3 py-1.5">
+                        <Users size={14} className="text-white" />
+                        <span className="text-[11px] font-semibold text-white">{isFollowing ? "Following" : "Follow"}</span>
+                    </button>
+                </div>
+
+                {/* Creator info */}
+                <div className="absolute left-4 top-20 z-10 flex items-center gap-2">
+                    <Avatar size="lg" className="ring-2 ring-white">
+                        <AvatarFallback className="bg-primary text-primary-foreground font-bold">
+                            {displayInitials}
+                        </AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="text-sm font-bold text-white">{displayName}</p>
+                        <p className="text-xs text-white/70">{displayTopic}</p>
+                    </div>
+                </div>
+
+                {/* Comments overlay */}
+                <div className="absolute inset-x-0 bottom-16 z-10 flex max-h-[55%] flex-col justify-end overflow-hidden px-4 pb-2">
+                    <div className="flex flex-col gap-2 overflow-y-auto [mask-image:linear-gradient(transparent_0%,black_30%)]">
+                        {comments.map((c) => (
+                            <div key={c.id} className="flex items-start gap-2">
+                                <Avatar size="sm" className="shrink-0">
+                                    <AvatarFallback className="bg-primary/60 text-white text-[10px]">{c.initials}</AvatarFallback>
+                                </Avatar>
+                                <div className="rounded-2xl bg-black/50 px-3 py-1.5 backdrop-blur-sm">
+                                    <span className="text-[11px] font-bold text-primary">{c.user} </span>
+                                    <span className="text-[12px] text-white">{c.text}</span>
+                                </div>
+                            </div>
+                        ))}
+                        <div ref={bottomRef} />
+                    </div>
+                </div>
+
+                {/* Right action rail */}
+                <div className="absolute right-3 bottom-20 z-10 flex flex-col items-center gap-4">
+                    <button onClick={handleLike} className="flex flex-col items-center gap-1">
+                        {liked
+                            ? <HeartSolid size={28} className="text-red-500" />
+                            : <Heart size={28} className="text-white" />}
+                        <span className="text-[11px] font-semibold text-white">{likeCount > 0 ? likeCount : ""}</span>
+                    </button>
+                </div>
+
+                {/* Comment input */}
+                <div className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-black/70 px-3 py-2 backdrop-blur-sm">
+                    <Avatar size="sm">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">AT</AvatarFallback>
+                    </Avatar>
+                    <Input
+                        placeholder="Say something..."
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && sendComment()}
+                        className="h-9 flex-1 rounded-full border-white/20 bg-white/10 text-white placeholder:text-white/50 focus-visible:border-white/40 focus-visible:ring-white/20"
+                    />
+                    <Button size="icon-sm" onClick={sendComment}
+                        className="shrink-0 rounded-full bg-primary">
+                        <Send size={16} />
+                    </Button>
+                </div>
             </div>
-        </div>
+        </>
     )
 }

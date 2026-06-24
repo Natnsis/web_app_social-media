@@ -153,7 +153,8 @@ export default function EventsPage() {
 
     return (
         <div className="relative flex h-full flex-col overflow-hidden">
-            <header className="flex shrink-0 items-center gap-2 px-4 py-3">
+            {/* Mobile header */}
+            <header className="flex shrink-0 items-center gap-2 px-4 py-3 lg:hidden">
                 <Link href="/">
                     <Button variant="ghost" size="icon-sm" aria-label="Back">
                         <ChevronLeft size={22} />
@@ -166,6 +167,11 @@ export default function EventsPage() {
             </header>
 
             <div className="flex-1 overflow-y-auto pb-24">
+                {/* Desktop header */}
+                <div className="hidden lg:block px-4 pt-4 pb-2 mx-auto max-w-[1500px]">
+                    <h1 className="text-2xl font-black">Events</h1>
+                    <p className="text-sm text-muted-foreground">Discover and join events from your community</p>
+                </div>
                 <div className="flex gap-2 overflow-x-auto px-4 py-2">
                     {filterPills.map((pill) => (
                         <button
@@ -183,8 +189,21 @@ export default function EventsPage() {
                 </div>
 
                 {isLoading && (
-                    <div className="flex justify-center py-16">
-                        <p className="text-sm text-muted-foreground">Loading events...</p>
+                    <div className="space-y-4 px-4 mx-auto max-w-[1500px]">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="rounded-2xl border border-border bg-card p-3 animate-pulse">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="size-10 rounded-full bg-muted" />
+                                        <div className="space-y-2">
+                                            <div className="h-4 w-36 rounded bg-muted" />
+                                            <div className="h-3 w-24 rounded bg-muted" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-3 h-40 rounded-xl bg-muted" />
+                            </div>
+                        ))}
                     </div>
                 )}
 

@@ -19,16 +19,14 @@ import {
 import {
     BarChart3, CalendarPlus, Clapperboard, FileText, MessageCircleWarning, Radio,
 } from "lucide-react"
+import { useGeolocation } from "@/hooks/use-geolocation"
+import { useLiveStreams } from "@/hooks/use-livestream"
+import { useEvents } from "@/hooks/use-events"
+import { useNearbyChurches, useToggleFollowChurch, useFollowingChurches } from "@/hooks/use-nearby-churches"
 import type { Post } from "@/types"
+import type { LiveStream } from "@/lib/api/livestream"
+import type { NearbyChurch } from "@/lib/api/churches"
 
-const liveUsers = [
-    { name: "Grace Ch...", initials: "GC", id: "grace-ch" },
-    { name: "Hope Val...", initials: "HV", id: "hope-val" },
-    { name: "Unity", initials: "UN", id: "unity" },
-    { name: "The Well", initials: "TW", id: "the-well" },
-    { name: "New Life", initials: "NL", id: "new-life" },
-    { name: "Zion", initials: "ZN", id: "zion" },
-]
 
 const ownerActions = [
     { label: "Create Group", href: "/chats/new-group", Icon: Users, metric: "12 active" },
@@ -52,19 +50,7 @@ const fabItems = [
     { label: "Create Post", Icon: PenSquare, href: "/account/create-post" },
 ]
 
-const upcomingEvents = [
-    { date: "NOV 12", title: "Bible Study", time: "21:00 – 9:30 PM" },
-    { date: "NOV 14", title: "Youth Night", time: "11:00 – 3:00 PM" },
-]
 
-const nearbyChurches = [
-    { id: "beza", name: "Beza Community Church", dist: "0.4 km", initials: "BC" },
-    { id: "summit", name: "Summit Fellowship", dist: "1.3 km", initials: "SF" },
-    { id: "grace", name: "Grace Chapel", dist: "2.1 km", initials: "GC" },
-    { id: "hope", name: "Hope Valley Church", dist: "2.8 km", initials: "HV" },
-    { id: "zion", name: "Zion Baptist", dist: "3.5 km", initials: "ZB" },
-    { id: "newlife", name: "New Life Ministry", dist: "4.2 km", initials: "NL" },
-]
 
 type MenuSection = {
     title: string
@@ -133,20 +119,37 @@ function SideDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
     )
 }
 
+function getInitials(name: string) {
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+}
+
 /* ── Shared feed content (used on both mobile and desktop) ── */
 function FeedContent() {
     const { data, isLoading, isError, refetch } = usePosts()
     const toggleLike = useToggleLike()
     const toggleSave = useToggleSave()
+    const toggleFollow = useToggleFollowChurch()
+    const { latitude, longitude } = useGeolocation()
+    const { data: liveData } = useLiveStreams()
+    const { data: nearbyData } = useNearbyChurches(latitude, longitude, 50)
     const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
     const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set())
     const [followedChurches, setFollowedChurches] = useState<Set<string>>(new Set())
+    const { data: followingData } = useFollowingChurches()
 
     const posts = data?.data ?? []
+    const liveStreams = liveData?.data ?? []
+    const churches = nearbyData?.data ?? []
+    const followingIds = followingData?.data?.map((c: NearbyChurch) => c.id) ?? []
     useEffect(() => {
         setLikedPosts(new Set(posts.filter((p) => p.isLiked).map((p) => p.id)))
         setSavedPosts(new Set(posts.filter((p) => p.isSaved).map((p) => p.id)))
     }, [data])
+    useEffect(() => {
+        if (followingIds.length > 0) {
+            setFollowedChurches(new Set(followingIds))
+        }
+    }, [followingIds])
 
     const handleLike = useCallback((id: string) => {
         const liked = likedPosts.has(id)
@@ -170,6 +173,17 @@ function FeedContent() {
         toggleSave.mutate({ id, saved })
     }, [savedPosts, toggleSave])
 
+    const handleToggleFollowChurch = useCallback((id: string) => {
+        const following = followedChurches.has(id)
+        setFollowedChurches((prev) => {
+            const next = new Set(prev)
+            if (following) next.delete(id)
+            else next.add(id)
+            return next
+        })
+        toggleFollow.mutate({ id, following })
+    }, [followedChurches, toggleFollow])
+
     return (
         <div className="space-y-4">
             {/* Live Now */}
@@ -179,18 +193,21 @@ function FeedContent() {
                     <Button variant="ghost" size="xs" className="rounded-full text-primary text-[10px]">View all</Button>
                 </div>
                 <div className="flex h-fit gap-4 overflow-x-auto px-1 py-1">
-                    {liveUsers.map((u, i) => (
-                        <Link key={i} href={`/live/${u.id}`} className="relative flex shrink-0 flex-col items-center gap-1">
+                    {liveStreams.length === 0 && (
+                        <p className="text-xs text-muted-foreground px-1 py-4">No live streams right now</p>
+                    )}
+                    {liveStreams.map((u: LiveStream) => (
+                        <Link key={u.id} href={`/live/${u.id}`} className="relative flex shrink-0 flex-col items-center gap-1">
                             <div className="relative">
                                 <Avatar className="size-14 ring-2 ring-red-500 ring-offset-1">
-                                    <AvatarFallback className="bg-muted text-xs font-medium">{u.initials}</AvatarFallback>
+                                    <AvatarFallback className="bg-muted text-xs font-medium">{getInitials(u.church.name)}</AvatarFallback>
                                 </Avatar>
                                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5">
                                     <div className="size-1 rounded-full bg-white animate-pulse" />
                                     <span className="text-[8px] font-bold text-white">LIVE</span>
                                 </div>
                             </div>
-                            <span className="mt-2 w-14 truncate text-center text-[10px] text-muted-foreground">{u.name}</span>
+                            <span className="mt-2 w-14 truncate text-center text-[10px] text-muted-foreground">{u.church.name}</span>
                         </Link>
                     ))}
                 </div>
@@ -205,29 +222,25 @@ function FeedContent() {
                     </Link>
                 </div>
                 <div className="flex gap-3 overflow-x-auto px-1 py-1">
-                    {nearbyChurches.map((c) => (
+                    {churches.length === 0 && (
+                        <p className="text-xs text-muted-foreground px-1 py-4">No nearby churches found</p>
+                    )}
+                    {churches.slice(0, 6).map((c: NearbyChurch) => (
                         <div key={c.id} className="flex w-44 shrink-0 flex-col gap-2 rounded-xl border border-border bg-card p-3">
                             <div className="flex items-center gap-2.5">
                                 <Avatar size="sm" className="shrink-0">
-                                    <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">{c.initials}</AvatarFallback>
+                                    <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">{getInitials(c.name)}</AvatarFallback>
                                 </Avatar>
                                 <p className="truncate text-xs font-semibold">{c.name}</p>
                             </div>
                             <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                <LocationPin size={12} className="text-primary" /> {c.dist}
+                                <LocationPin size={12} className="text-primary" /> {c.distance.toFixed(1)} km
                             </p>
                             <Button
-                                variant="default"
+                                variant={followedChurches.has(c.id) ? "outline" : "default"}
                                 size="xs"
                                 className="w-full rounded-full text-[10px]"
-                                onClick={() => {
-                                    setFollowedChurches((prev) => {
-                                        const next = new Set(prev)
-                                        if (next.has(c.id)) next.delete(c.id)
-                                        else next.add(c.id)
-                                        return next
-                                    })
-                                }}
+                                onClick={() => handleToggleFollowChurch(c.id)}
                             >
                                 {followedChurches.has(c.id) ? "Following" : "Follow"}
                             </Button>
@@ -310,14 +323,19 @@ function FeedContent() {
 }
 
 function DesktopStoryRail() {
+    const { data: liveData } = useLiveStreams()
+    const streams = liveData?.data ?? []
     return (
         <div className="flex gap-5 overflow-x-auto px-3 py-2">
-            {liveUsers.map((u, i) => (
+            {streams.length === 0 && (
+                <p className="text-xs text-muted-foreground px-1 py-4">No live streams</p>
+            )}
+            {streams.map((u: LiveStream, i) => (
                 <Link key={u.id} href={`/live/${u.id}`} className="group flex w-16 shrink-0 flex-col items-center gap-2">
                     <div className="relative">
                         <div className="absolute -inset-1 rounded-full bg-primary/25 transition-transform group-hover:scale-105" />
                         <Avatar className="relative size-14 border-2 border-background">
-                            <AvatarFallback className="bg-card text-xs font-bold">{u.initials}</AvatarFallback>
+                            <AvatarFallback className="bg-card text-xs font-bold">{getInitials(u.church.name)}</AvatarFallback>
                         </Avatar>
                         {i === 0 && (
                             <div className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full border-2 border-background bg-primary text-[13px] font-bold text-primary-foreground">
@@ -325,7 +343,7 @@ function DesktopStoryRail() {
                             </div>
                         )}
                     </div>
-                    <span className="w-full truncate text-center text-[11px] font-semibold">{i === 0 ? "You" : u.name}</span>
+                    <span className="w-full truncate text-center text-[11px] font-semibold">{i === 0 ? "You" : u.church.name}</span>
                 </Link>
             ))}
         </div>
@@ -486,6 +504,21 @@ function DesktopFeedExperience({ isOwner }: { isOwner: boolean }) {
 
 /* ── Desktop right panel ── */
 function DesktopRightPanel() {
+    const { latitude, longitude } = useGeolocation()
+    const { data: eventsData } = useEvents(1, 5)
+    const { data: nearbyData } = useNearbyChurches(latitude, longitude, 50)
+    const events = eventsData?.data ?? []
+    const churches = nearbyData?.data ?? []
+
+    function formatEventDate(dateStr: string) {
+        const d = new Date(dateStr)
+        return {
+            month: d.toLocaleString("en-US", { month: "short" }).toUpperCase(),
+            day: d.getDate(),
+            time: d.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+        }
+    }
+
     return (
         <aside className="hidden h-full shrink-0 flex-col overflow-y-auto rounded-2xl border border-border bg-card p-4 xl:flex">
             <div className="rounded-xl bg-primary p-4 text-primary-foreground">
@@ -509,18 +542,24 @@ function DesktopRightPanel() {
                     <button className="text-[11px] text-primary hover:underline">View All</button>
                 </div>
                 <div className="space-y-2.5">
-                    {upcomingEvents.map((ev) => (
-                        <div key={ev.title} className="flex gap-3 rounded-xl border border-border bg-background p-3">
-                            <div className="flex w-10 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary">
-                                <p className="text-[9px] font-bold uppercase leading-tight">{ev.date.split(" ")[0]}</p>
-                                <p className="text-base font-bold leading-tight">{ev.date.split(" ")[1]}</p>
+                    {events.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-3">No upcoming events</p>
+                    )}
+                    {events.slice(0, 3).map((ev) => {
+                        const { month, day, time } = formatEventDate(ev.startDate)
+                        return (
+                            <div key={ev.id} className="flex gap-3 rounded-xl border border-border bg-background p-3">
+                                <div className="flex w-10 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <p className="text-[9px] font-bold uppercase leading-tight">{month}</p>
+                                    <p className="text-base font-bold leading-tight">{day}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-semibold">{ev.title}</p>
+                                    <p className="text-[10px] text-muted-foreground">{time}</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-xs font-semibold">{ev.title}</p>
-                                <p className="text-[10px] text-muted-foreground">{ev.time}</p>
-                            </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             </div>
 
@@ -547,14 +586,17 @@ function DesktopRightPanel() {
             <div>
                 <p className="flex items-center gap-1.5 text-xs font-bold mb-3"><LocationPin size={13} className="text-primary" /> Nearby Churches</p>
                 <div className="space-y-2">
-                    {nearbyChurches.map((c) => (
-                        <div key={c.name} className="flex items-center gap-2.5 rounded-xl border border-border bg-background p-3">
+                    {churches.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-3">No nearby churches</p>
+                    )}
+                    {churches.slice(0, 4).map((c) => (
+                        <div key={c.id} className="flex items-center gap-2.5 rounded-xl border border-border bg-background p-3">
                             <Avatar size="sm">
-                                <AvatarFallback className="bg-primary/20 text-primary text-[10px]">{c.initials}</AvatarFallback>
+                                <AvatarFallback className="bg-primary/20 text-primary text-[10px]">{getInitials(c.name)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-semibold truncate">{c.name}</p>
-                                <p className="text-[10px] text-muted-foreground">{c.dist}</p>
+                                <p className="text-[10px] text-muted-foreground">{c.distance.toFixed(1)} km</p>
                             </div>
                         </div>
                     ))}

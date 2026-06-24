@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { apiGetNearbyChurches, apiFollowChurch, apiUnfollowChurch } from "@/lib/api/churches"
+import { apiGetFollowingChurches } from "@/lib/api/churches"
 
 export function useNearbyChurches(lat: number, lng: number, radiusKm: number) {
   return useQuery({
@@ -11,13 +12,22 @@ export function useNearbyChurches(lat: number, lng: number, radiusKm: number) {
   })
 }
 
+export function useFollowingChurches() {
+  return useQuery({
+    queryKey: ["following-churches"],
+    queryFn: apiGetFollowingChurches,
+  })
+}
+
 export function useToggleFollowChurch() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, following }: { id: string; following: boolean }) =>
       following ? apiUnfollowChurch(id) : apiFollowChurch(id),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["nearby-churches"] })
+      qc.invalidateQueries({ queryKey: ["following-churches"] })
+      qc.invalidateQueries({ queryKey: ["church", variables.id] })
     },
   })
 }

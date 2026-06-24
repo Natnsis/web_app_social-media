@@ -73,6 +73,13 @@ const desktopNavItems: NavSection[] = [
         ],
     },
     {
+        title: "Discover",
+        items: [
+            { href: "/notifications", label: "Notifications", Icon: Bell, ActiveIcon: Bell },
+            { href: "/explore", label: "Explore", Icon: Search, ActiveIcon: Search },
+        ],
+    },
+    {
         title: "Church",
         items: [
             { href: "/account", label: "Profile", Icon: Church, ActiveIcon: Church },
@@ -181,10 +188,12 @@ function DesktopTopbar() {
             </div>
             <div className="ml-auto flex items-center gap-2">
                 <ThemeToggle />
-                <Button variant="outline" size="icon-lg" className="relative rounded-xl bg-card">
-                    <Bell size={18} />
-                    <span className="absolute right-2 top-2 size-2 rounded-full bg-red-500 ring-2 ring-background" />
-                </Button>
+                <Link href="/notifications">
+                    <Button variant="outline" size="icon-lg" className="relative rounded-xl bg-card">
+                        <Bell size={18} />
+                        <span className="absolute right-2 top-2 size-2 rounded-full bg-red-500 ring-2 ring-background" />
+                    </Button>
+                </Link>
                 <Avatar className="size-10 cursor-pointer border border-border">
                     <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">{user?.initials ?? "AT"}</AvatarFallback>
                 </Avatar>

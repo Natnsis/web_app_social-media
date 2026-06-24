@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useJsApiLoader, GoogleMap, Marker } from "@react-google-maps/api"
@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useGeolocation } from "@/hooks/use-geolocation"
-import { useNearbyChurches, useToggleFollowChurch } from "@/hooks/use-nearby-churches"
+import { useNearbyChurches, useToggleFollowChurch, useFollowingChurches } from "@/hooks/use-nearby-churches"
 import { LocationPin, ArrowLeft, SlidersSimple } from "nasicon-react/outline"
 import type { NearbyChurch } from "@/lib/api/churches"
 
@@ -71,6 +71,14 @@ export default function NearbyChurchesPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [followed, setFollowed] = useState<Set<string>>(new Set())
   const toggleFollow = useToggleFollowChurch()
+  const { data: followingData } = useFollowingChurches()
+  const followingIds = followingData?.data?.map((c) => c.id) ?? []
+
+  useEffect(() => {
+    if (followingIds.length > 0) {
+      setFollowed(new Set(followingIds))
+    }
+  }, [followingIds])
 
   const { data, isLoading, isError, refetch } = useNearbyChurches(latitude, longitude, radius)
   const churches = data?.data ?? []

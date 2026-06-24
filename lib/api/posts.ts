@@ -1,6 +1,8 @@
 import { get, post, del } from "./client"
 import { useAuthStore } from "@/lib/store/auth"
 import type {
+  Post,
+  Comment,
   PostsResponse,
   PlayPostResponse,
   CommentsResponse,
@@ -16,6 +18,10 @@ function token() {
 
 export function apiGetPosts(page = 1, limit = 20) {
   return get<PostsResponse>(`/v1/posts?page=${page}&limit=${limit}`, token())
+}
+
+export function apiGetPost(id: string) {
+  return get<ApiResponse<Post>>(`/v1/posts/${id}`, token())
 }
 
 export function apiGetSavedPosts(page = 1, limit = 20) {
@@ -60,4 +66,12 @@ export function apiCreateComment(postId: string, payload: CreateCommentPayload) 
 
 export function apiDeleteComment(postId: string, commentId: string) {
   return del<ApiResponse>(`/v1/posts/${postId}/comments/${commentId}`, token())
+}
+
+export function apiLikeComment(postId: string, commentId: string) {
+  return post<ApiResponse>(`/v1/posts/${postId}/comments/${commentId}/like`, undefined, token())
+}
+
+export function apiUnlikeComment(postId: string, commentId: string) {
+  return del<ApiResponse>(`/v1/posts/${postId}/comments/${commentId}/like`, token())
 }

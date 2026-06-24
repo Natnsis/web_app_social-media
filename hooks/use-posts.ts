@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   apiGetPosts,
+  apiGetPost,
   apiGetSavedPosts,
   apiCreatePost,
   apiDeletePost,
@@ -13,6 +14,8 @@ import {
   apiGetComments,
   apiCreateComment,
   apiDeleteComment,
+  apiLikeComment,
+  apiUnlikeComment,
 } from "@/lib/api/posts"
 import type { CreatePostPayload, CreateCommentPayload } from "@/types"
 
@@ -20,6 +23,14 @@ export function usePosts(page = 1, limit = 20) {
   return useQuery({
     queryKey: ["posts", "feed", page, limit],
     queryFn: () => apiGetPosts(page, limit),
+  })
+}
+
+export function usePost(id: string) {
+  return useQuery({
+    queryKey: ["post", id],
+    queryFn: () => apiGetPost(id),
+    enabled: !!id,
   })
 }
 
@@ -69,6 +80,18 @@ export function useToggleSave() {
       saved ? apiUnsavePost(id) : apiSavePost(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["posts"] })
+    },
+  })
+}
+
+export function useToggleCommentLike(postId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ commentId, liked }: { commentId: string; liked: boolean }) =>
+      liked ? apiUnlikeComment(postId, commentId) : apiLikeComment(postId, commentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["comments", postId] })
+      qc.invalidateQueries({ queryKey: ["post", postId] })
     },
   })
 }
