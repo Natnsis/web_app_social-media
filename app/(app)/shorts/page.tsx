@@ -39,7 +39,7 @@ function ShortItem({
   active: boolean
   onCommentOpen: (id: string) => void
 }) {
-  const [liked, setLiked] = useState(false)
+  const [liked, setLiked] = useState(short.isLiked ?? false)
   const [likes, setLikes] = useState(short._count.likes)
   const toggleLike = useToggleShortLike()
 

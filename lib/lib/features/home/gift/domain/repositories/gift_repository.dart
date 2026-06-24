@@ -1,0 +1,17 @@
+import 'package:dartz/dartz.dart';
+import 'package:faithconnect/core/error/failures.dart';
+import 'package:faithconnect/features/home/gift/domain/entities/gift_hub_content.dart';
+import 'package:faithconnect/features/home/gift/domain/entities/live_gift_receipt.dart';
+
+import 'package:faithconnect/core/network/payment_checkout_info.dart';
+import 'package:faithconnect/features/home/gift/data/dto/send_gift_dto.dart';
+
+abstract class GiftRepository {
+  Future<Either<Failure, GiftHubContent>> getHubContent();
+  Future<Either<Failure, LiveGiftReceipt>> sendLiveGift({
+    required String streamId,
+    required String giftItemId,
+  });
+  Future<Either<Failure, PaymentCheckoutInfo>> sendGift(SendGiftDto dto);
+  Future<Either<Failure, String>> checkTransactionStatus(String txRef);
+}

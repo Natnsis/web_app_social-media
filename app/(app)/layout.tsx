@@ -138,15 +138,6 @@ function DesktopSidebar() {
                     ))}
                 </SidebarContent>
                 <SidebarFooter>
-                    <div className={`mb-3 flex items-center rounded-xl bg-muted py-2 ${collapsed ? "justify-center px-2" : "gap-2 px-3"}`}>
-                        <Avatar className="size-8">
-                            <AvatarFallback className="bg-primary text-primary-foreground text-[11px] font-bold">{user?.initials ?? "AT"}</AvatarFallback>
-                        </Avatar>
-                        <div className={`min-w-0 ${collapsed ? "hidden" : "block"}`}>
-                            <p className="truncate text-xs font-bold">{user?.name ?? "Church Admin"}</p>
-                            <p className="truncate text-[10px] text-muted-foreground">{user?.role ?? "Member"}</p>
-                        </div>
-                    </div>
                     <div className={`space-y-1 ${collapsed ? "px-2" : "px-3"}`}>
                         <button className={`flex w-full items-center py-1 text-xs text-muted-foreground hover:text-foreground ${collapsed ? "justify-center" : "gap-2"}`}>
                             <Gear size={13} />

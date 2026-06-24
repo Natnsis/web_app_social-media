@@ -1,0 +1,4 @@
+enum CampaignStatus {
+  active,
+  completed,
+}

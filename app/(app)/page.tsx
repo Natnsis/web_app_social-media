@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -13,7 +12,7 @@ import { PostCard } from "@/components/post-card"
 import { usePosts, useToggleLike, useToggleSave } from "@/hooks/use-posts"
 import { GridCircle, Bell, CirclePlus } from "nasicon-react/solid"
 import {
-    Heart, HouseChimneyBlank, User, Gift, Users, Globe, ChevronRight,
+    Heart, HouseChimneyBlank, User, Gift, Users, Globe, ChevronRight, Gear,
     Xmark, ArrowRightFromBracket, Church, CornerUpRight,
     TowerBroadcast, Video, PenSquare, CalendarAlt, LocationPin,
 } from "nasicon-react/outline"
@@ -105,20 +104,6 @@ function SideDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
                 <div className="flex items-center justify-end px-4 pt-4">
                     <Button variant="ghost" size="icon-sm" onClick={onClose}><Xmark size={20} /></Button>
                 </div>
-                <div className="flex items-center gap-3 px-5 py-3">
-                    <Avatar size="lg">
-                        <AvatarFallback className="bg-primary text-primary-foreground text-base">{user?.initials ?? "Y"}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <p className="font-semibold">{user?.name ?? "Yared"}</p>
-                        <p className="text-xs text-muted-foreground">{user?.role ?? "Church Administrator"}</p>
-                    </div>
-                </div>
-                <div className="mx-4 mb-3 flex items-center gap-2 rounded-xl border border-border px-3 py-2">
-                    <Church size={18} className="text-muted-foreground" />
-                    <p className="flex-1 text-sm font-medium">{user?.org ?? "Beza International"}</p>
-                    <Badge className="text-[10px]">ADMIN</Badge>
-                </div>
                 <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
                     {sections.map((section) => (
                         <div key={section.title}>
@@ -157,6 +142,12 @@ function FeedContent() {
     const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set())
     const [followedChurches, setFollowedChurches] = useState<Set<string>>(new Set())
 
+    const posts = data?.data ?? []
+    useEffect(() => {
+        setLikedPosts(new Set(posts.filter((p) => p.isLiked).map((p) => p.id)))
+        setSavedPosts(new Set(posts.filter((p) => p.isSaved).map((p) => p.id)))
+    }, [data])
+
     const handleLike = useCallback((id: string) => {
         const liked = likedPosts.has(id)
         setLikedPosts((prev) => {
@@ -178,8 +169,6 @@ function FeedContent() {
         })
         toggleSave.mutate({ id, saved })
     }, [savedPosts, toggleSave])
-
-    const posts = data?.data ?? []
 
     return (
         <div className="space-y-4">
@@ -386,6 +375,12 @@ function DesktopFeedExperience({ isOwner }: { isOwner: boolean }) {
     const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
     const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set())
 
+    const posts = data?.data ?? []
+    useEffect(() => {
+        setLikedPosts(new Set(posts.filter((p) => p.isLiked).map((p) => p.id)))
+        setSavedPosts(new Set(posts.filter((p) => p.isSaved).map((p) => p.id)))
+    }, [data])
+
     const handleLike = useCallback((id: string) => {
         const liked = likedPosts.has(id)
         setLikedPosts((prev) => {
@@ -413,8 +408,6 @@ function DesktopFeedExperience({ isOwner }: { isOwner: boolean }) {
             setComposerHeight(composerRef.current.offsetHeight)
         }
     }, [isOwner])
-
-    const posts = data?.data ?? []
 
     return (
         <div className="mx-auto grid h-full max-w-[1500px] grid-cols-[minmax(0,1fr)_320px] gap-5 py-4">
@@ -595,9 +588,11 @@ function DesktopRightPanel() {
 }
 
 export default function HomePage() {
-    const { user } = useAuthStore()
+    const { user, logout } = useAuthStore()
+    const router = useRouter()
     const [drawerOpen, setDrawerOpen] = useState(false)
     const [fabOpen, setFabOpen] = useState(false)
+    const [profileOpen, setProfileOpen] = useState(false)
 
     return (
         <>
@@ -623,6 +618,53 @@ export default function HomePage() {
                     </h1>
                     <div className="flex items-center gap-1">
                         <ThemeToggle />
+                        <div className="relative">
+                            <button onClick={() => setProfileOpen((v) => !v)} className="relative">
+                                <Avatar className="size-8 cursor-pointer ring-2 ring-border">
+                                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                                        {user?.initials ?? "Y"}
+                                    </AvatarFallback>
+                                </Avatar>
+                            </button>
+                            {profileOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+                                    <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl border border-border bg-card p-4 shadow-xl">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar size="lg">
+                                                <AvatarFallback className="bg-primary text-primary-foreground text-base">
+                                                    {user?.initials ?? "Y"}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-semibold">{user?.name ?? "User"}</p>
+                                                <p className="text-xs text-muted-foreground">{user?.role ?? "Member"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="mt-2 flex items-center gap-2 rounded-xl border border-border px-3 py-2">
+                                            <Church size={16} className="text-muted-foreground" />
+                                            <p className="flex-1 text-sm font-medium">{user?.org ?? "Church"}</p>
+                                        </div>
+                                        <Separator className="my-3" />
+                                        <div className="space-y-1">
+                                            <Link href="/account" onClick={() => setProfileOpen(false)}
+                                                className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-muted transition-colors">
+                                                <User size={16} /> Profile
+                                            </Link>
+                                            <Link href="/account/settings" onClick={() => setProfileOpen(false)}
+                                                className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-muted transition-colors">
+                                                <Gear size={16} /> Settings
+                                            </Link>
+                                        </div>
+                                        <Separator className="my-3" />
+                                        <button onClick={() => { logout(); router.push("/login"); setProfileOpen(false) }}
+                                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors">
+                                            <ArrowRightFromBracket size={16} /> Logout
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                         <Button variant="ghost" size="icon-sm"><Bell size={20} /></Button>
                     </div>
                 </header>

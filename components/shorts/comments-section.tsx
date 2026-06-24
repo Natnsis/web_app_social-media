@@ -49,7 +49,7 @@ function CommentRow({
   const authorInitials = comment.author?.initials ?? authorName.slice(0, 2).toUpperCase()
   const replyCount = comment._count?.replies ?? 0
   const initialLikes = comment._count?.likes ?? 0
-  const [liked, setLiked] = useState(false)
+  const [liked, setLiked] = useState(comment.isLiked ?? false)
   const [likeCount, setLikeCount] = useState(initialLikes)
   const [showReplies, setShowReplies] = useState(false)
   const toggleCommentLike = useToggleCommentLike()

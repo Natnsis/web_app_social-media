@@ -35,6 +35,8 @@ export interface Post {
   mediaUrls: string | null
   novaFileIds: string[]
   isTagged: boolean
+  isLiked?: boolean
+  isSaved?: boolean
   createdAt: string
   updatedAt: string
   deletedAt: string | null
@@ -89,6 +91,7 @@ export interface Comment {
     initials: string
     avatarUrl: string | null
   }
+  isLiked?: boolean
   _count: {
     replies: number
     likes?: number
@@ -457,6 +460,7 @@ export interface Short {
   videoUrl: string | null
   novaFileId: string
   isPublished: boolean
+  isLiked?: boolean
   publishedAt: string
   viewCount: number
   createdAt: string
