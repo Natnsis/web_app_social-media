@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Heart as HeartOutline, MessageSquare, Bookmark as BookmarkOutline, CornerUpRight, Eye, CirclePlay } from "nasicon-react/outline"
 import { DotsHorizontal, Heart as HeartSolid, Bookmark as BookmarkSolid } from "nasicon-react/solid"
 import { ChurchProfileDialog } from "@/components/church-profile-dialog"
+import { StreamPlayerWrapper } from "@/components/stream-player"
 import type { Post } from "@/types"
 
 function getInitials(name: string) {
@@ -42,6 +43,7 @@ export function PostCard({
 }: PostCardProps) {
   const [imgError, setImgError] = useState<Set<string>>(new Set())
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null)
 
   const hasImages = post.files.some((f) => f.mediaType === "image")
   const hasVideos = post.files.some((f) => f.mediaType === "video")
@@ -164,32 +166,49 @@ export function PostCard({
 
           {videos.length > 0 && (
             <div className={`mt-2 grid gap-2 ${videos.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
-              {videos.map((file) => (
-                <div
-                  key={file.id}
-                  className="relative aspect-video flex items-center justify-center rounded-xl bg-gray-800 cursor-pointer"
-                >
-                  {file.isReady ? (
-                    <>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="flex size-14 items-center justify-center rounded-full bg-primary/90 shadow-lg">
+              {videos.map((file) => {
+                const canPlay = file.isReady && file.streamCode && file.appId
+                const isPlaying = playingVideo === file.id
+
+                return (
+                  <div
+                    key={file.id}
+                    className="relative aspect-video overflow-hidden rounded-xl bg-gray-800"
+                  >
+                    {isPlaying && canPlay ? (
+                      <StreamPlayerWrapper
+                        id={file.id}
+                        appId={file.appId!}
+                        streamCode={file.streamCode!}
+                        playing
+                      />
+                    ) : canPlay ? (
+                      <button
+                        onClick={() => setPlayingVideo(file.id)}
+                        className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                      >
+                        <div className="flex size-14 items-center justify-center rounded-full bg-primary/90 shadow-lg transition-transform hover:scale-105">
                           <CirclePlay size={30} className="text-white" />
                         </div>
+                      </button>
+                    ) : file.isReady ? (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-2 text-white/70">
+                          <CirclePlay size={24} />
+                          <span className="text-xs">Unavailable</span>
+                        </div>
                       </div>
-                      <div className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
-                        {file.videoStatus === "ready" ? "Ready" : "Processing"}
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white">
+                        <div className="flex size-12 items-center justify-center rounded-full bg-white/20">
+                          <CirclePlay size={24} />
+                        </div>
+                        <span className="text-xs">Processing...</span>
                       </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-white">
-                      <div className="flex size-12 items-center justify-center rounded-full bg-white/20">
-                        <CirclePlay size={24} />
-                      </div>
-                      <span className="text-xs">Processing...</span>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

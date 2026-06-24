@@ -12,7 +12,7 @@ import { Calendar } from "lucide-react"
 import {
     HouseChimneyBlank, Annotation, CirclePlay, User,
     Gear, Bell, Search, Heart, PenSquare, ArrowRightFromBracket,
-    ChartBar, Church, GridCircle,
+    Church, GridCircle,
 } from "nasicon-react/outline"
 import {
     HouseChimneyBlank as HouseChimneyBlankSolid,
@@ -136,22 +136,6 @@ function DesktopSidebar() {
                             </SidebarGroupContent>
                         </SidebarGroup>
                     ))}
-                    <SidebarSeparator />
-                    <div className="px-3 py-2">
-                        <div className="rounded-xl border border-border bg-background p-3">
-                            <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
-                                <div className={collapsed ? "hidden" : "block"}>
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Giving</p>
-                                    <p className="mt-1 text-lg font-black">$18.2k</p>
-                                </div>
-                                <ChartBar size={20} className="text-primary" />
-                            </div>
-                            <Link href="/campaigns" className={`mt-3 w-full rounded-xl ${collapsed ? "px-0" : "gap-2"} inline-flex items-center justify-center text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2`} aria-label="Give Now">
-                                <Heart size={14} />
-                                {!collapsed && "Give Now"}
-                            </Link>
-                        </div>
-                    </div>
                 </SidebarContent>
                 <SidebarFooter>
                     <div className={`mb-3 flex items-center rounded-xl bg-muted py-2 ${collapsed ? "justify-center px-2" : "gap-2 px-3"}`}>
