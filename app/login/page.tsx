@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { hydrateSession } from "@/lib/auth/session"
 import { useAuthStore } from "@/lib/store/auth"
 import { useMutation } from "@tanstack/react-query"
 import {
@@ -66,6 +67,7 @@ export default function LoginPage() {
   useEffect(() => {
     const run = async () => {
       await useAuthStore.persist.rehydrate()
+      await hydrateSession()
       if (useAuthStore.getState().isAuthenticated) {
         router.replace("/")
       } else {
@@ -87,27 +89,8 @@ export default function LoginPage() {
 
   const loginMutation = useMutation({
     mutationFn: () => apiLogin(emailOrPhone, password),
-    onSuccess: (res) => {
-      setAuthData(res.data.accessToken, res.data.refreshToken)
-      // Decode and console log the token as requested
-      const base64Url = res.data.accessToken.split(".")[1]
-      if (base64Url) {
-        try {
-          const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
-          const jsonPayload = decodeURIComponent(
-            atob(base64)
-              .split("")
-              .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-              .join("")
-          )
-          console.log(
-            "SUCCESSFULLY LOGGED IN! Detokenized JWT payload:",
-            JSON.parse(jsonPayload)
-          )
-        } catch (e) {
-          console.error("Failed to decode token on console log", e)
-        }
-      }
+    onSuccess: async (res) => {
+      await setAuthData(res.data.accessToken, res.data.refreshToken)
       router.replace("/")
     },
     onError: (err: any) => {
@@ -154,8 +137,8 @@ export default function LoginPage() {
 
   const googleLoginMutation = useMutation({
     mutationFn: (idToken: string) => apiGoogleLogin(idToken),
-    onSuccess: (res) => {
-      setAuthData(res.data.accessToken, res.data.refreshToken)
+    onSuccess: async (res) => {
+      await setAuthData(res.data.accessToken, res.data.refreshToken)
       router.replace("/")
     },
     onError: (err: any) => {

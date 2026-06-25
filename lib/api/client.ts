@@ -1,105 +1,83 @@
+import { useAuthStore } from "@/lib/store/auth"
+import { refreshAccessToken } from "@/lib/auth/session"
+
 const BASE = process.env.NEXT_PUBLIC_API_URL
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message)
+    this.name = "ApiError"
+  }
+}
+
+function resolveToken(explicit?: string): string | undefined {
+  return explicit ?? useAuthStore.getState().accessToken ?? undefined
+}
+
+async function parseResponse<T>(res: Response): Promise<T> {
+  const contentType = res.headers.get("content-type")
+  let data: unknown = null
+  let responseText = ""
+
+  if (contentType?.includes("application/json")) {
+    data = await res.json()
+  } else {
+    responseText = await res.text()
+  }
+
+  if (!res.ok) {
+    const payload = data as { message?: string; error?: string } | null
+    const errorMsg =
+      payload?.message ||
+      payload?.error ||
+      responseText ||
+      `HTTP error! Status: ${res.status}`
+    throw new ApiError(errorMsg, res.status)
+  }
+
+  return data as T
+}
 
 async function request<T>(
   method: string,
   path: string,
   body?: unknown,
   token?: string,
+  retried = false,
 ): Promise<T> {
   const url = `${BASE}${path}`
-  console.log(`[API REQUEST] ${method} ${url}`, { body, hasToken: !!token })
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  }
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`
-  }
-
-  try {
-    const res = await fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    })
-
-    const contentType = res.headers.get("content-type")
-    let data: any = null
-    let responseText = ""
-
-    if (contentType && contentType.includes("application/json")) {
-      data = await res.json()
-    } else {
-      responseText = await res.text()
-    }
-
-    if (!res.ok) {
-      const errorMsg =
-        data?.message || data?.error || responseText || `HTTP error! Status: ${res.status}`
-      console.warn(`[API ERROR] ${method} ${path} failed with Status ${res.status}:`, {
-        url,
-        status: res.status,
-        statusText: res.statusText,
-        errorPayload: data,
-        rawText: responseText,
-      })
-      throw new Error(errorMsg)
-    }
-
-    console.log(`[API SUCCESS] ${method} ${path}:`, data)
-    return data as T
-  } catch (error: any) {
-    console.warn(`[API NETWORK/UNKNOWN ERROR] ${method} ${path}:`, error)
-    throw error
-  }
-}
-
-async function requestFormData<T>(
-  method: string,
-  path: string,
-  formData: FormData,
-  token?: string,
-): Promise<T> {
-  const url = `${BASE}${path}`
-  console.log(`[API REQUEST] ${method} ${url} (FormData)`)
+  const authToken = resolveToken(token)
 
   const headers: Record<string, string> = {}
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`
+  if (!(body instanceof FormData)) {
+    headers["Content-Type"] = "application/json"
+  }
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`
   }
 
-  try {
-    const res = await fetch(url, { method, headers, body: formData })
+  const res = await fetch(url, {
+    method,
+    headers,
+    body:
+      body instanceof FormData
+        ? body
+        : body !== undefined
+          ? JSON.stringify(body)
+          : undefined,
+  })
 
-    const contentType = res.headers.get("content-type")
-    let data: any = null
-    let responseText = ""
-
-    if (contentType && contentType.includes("application/json")) {
-      data = await res.json()
-    } else {
-      responseText = await res.text()
+  if (res.status === 401 && !retried && authToken) {
+    const newToken = await refreshAccessToken()
+    if (newToken) {
+      return request<T>(method, path, body, newToken, true)
     }
-
-    if (!res.ok) {
-      const errorMsg =
-        data?.message || data?.error || responseText || `HTTP error! Status: ${res.status}`
-      console.warn(`[API ERROR] ${method} ${path} failed with Status ${res.status}:`, {
-        url,
-        status: res.status,
-        statusText: res.statusText,
-        errorPayload: data,
-        rawText: responseText,
-      })
-      throw new Error(errorMsg)
-    }
-
-    console.log(`[API SUCCESS] ${method} ${path}:`, data)
-    return data as T
-  } catch (error: any) {
-    console.warn(`[API NETWORK/UNKNOWN ERROR] ${method} ${path}:`, error)
-    throw error
   }
+
+  return parseResponse<T>(res)
 }
 
 export function get<T>(path: string, token?: string): Promise<T> {
@@ -118,10 +96,12 @@ export function patch<T>(path: string, body?: unknown, token?: string): Promise<
   return request<T>("PATCH", path, body, token)
 }
 
+/** @deprecated FormData is handled automatically by post/patch — kept for call-site compatibility. */
 export function postFormData<T>(path: string, formData: FormData, token?: string): Promise<T> {
-  return requestFormData<T>("POST", path, formData, token)
+  return post<T>(path, formData, token)
 }
 
+/** @deprecated FormData is handled automatically by post/patch — kept for call-site compatibility. */
 export function patchFormData<T>(path: string, formData: FormData, token?: string): Promise<T> {
-  return requestFormData<T>("PATCH", path, formData, token)
+  return patch<T>(path, formData, token)
 }

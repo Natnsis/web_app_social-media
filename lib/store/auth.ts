@@ -1,6 +1,13 @@
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
+import { immer } from "zustand/middleware/immer"
 import { apiLogout } from "@/lib/api/auth"
+import {
+  canManageChurchContent,
+  normalizeRoles,
+  primaryRoleLabel,
+} from "@/lib/auth/roles"
+import { clearSession, syncSession } from "@/lib/auth/session"
 
 export interface AuthUser {
   id: string
@@ -10,6 +17,8 @@ export interface AuthUser {
   roles: string[]
   role: string
   org: string
+  isChurchOwner: boolean
+  canManageChurch: boolean
 }
 
 interface AuthState {
@@ -17,7 +26,11 @@ interface AuthState {
   refreshToken: string | null
   user: AuthUser | null
   isAuthenticated: boolean
-  setAuthData: (accessToken: string, refreshToken: string) => void
+  /** Set tokens + user after login; persists to httpOnly cookies. */
+  setAuthData: (accessToken: string, refreshToken: string) => Promise<void>
+  /** Internal: update tokens after refresh (cookies already set by route handler). */
+  setTokens: (accessToken: string, refreshToken: string) => void
+  clearAuth: () => void
   logout: () => Promise<void>
 }
 
@@ -30,19 +43,29 @@ export function decodeJwt(token: string): AuthUser | null {
       atob(base64)
         .split("")
         .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
+        .join(""),
     )
     const payload = JSON.parse(jsonPayload)
-    const roles = payload.roles || []
-    const isChurchOwner = roles.includes("CHURCH_OWNER")
+    const roles = normalizeRoles(payload.roles)
+    const canManage = canManageChurchContent(roles)
+    const name = payload.name || "User"
     return {
-      id: payload.sub || "1",
-      name: payload.name || "Abebe Tesfaye",
-      email: payload.email || "user@example.com",
-      initials: payload.name ? payload.name.split(" ").map((n: string) => n[0]).join("").toUpperCase() : "AT",
-      roles: roles,
-      role: isChurchOwner ? "Church Owner" : "Follower",
-      org: payload.org || "Beza International",
+      id: payload.sub || "",
+      name,
+      email: payload.email || "",
+      initials: name
+        ? name
+            .split(" ")
+            .map((n: string) => n[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2)
+        : "U",
+      roles,
+      role: primaryRoleLabel(roles),
+      org: payload.org || payload.churchName || "",
+      isChurchOwner: canManage,
+      canManageChurch: canManage,
     }
   } catch (error) {
     console.error("Failed to decode JWT token:", error)
@@ -54,30 +77,53 @@ export function isTokenExpired(token: string): boolean {
   try {
     const base64Url = token.split(".")[1]
     if (!base64Url) return true
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
-    const payload = JSON.parse(atob(base64))
+    const payload = JSON.parse(atob(base64Url.replace(/-/g, "+").replace(/_/g, "/")))
     return payload.exp ? Date.now() >= payload.exp * 1000 : true
   } catch {
     return true
   }
 }
 
+function applyTokens(
+  set: (fn: (state: AuthState) => void) => void,
+  accessToken: string,
+  refreshToken: string,
+) {
+  const decoded = decodeJwt(accessToken)
+  set((state) => {
+    state.accessToken = accessToken
+    state.refreshToken = refreshToken
+    state.user = decoded
+    state.isAuthenticated = !!decoded
+  })
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    immer((set, get) => ({
       accessToken: null,
       refreshToken: null,
       user: null,
       isAuthenticated: false,
-      setAuthData: (accessToken: string, refreshToken: string) => {
-        const decoded = decodeJwt(accessToken)
-        set({
-          accessToken,
-          refreshToken,
-          user: decoded,
-          isAuthenticated: !!decoded,
+
+      setAuthData: async (accessToken, refreshToken) => {
+        applyTokens(set, accessToken, refreshToken)
+        await syncSession(accessToken, refreshToken)
+      },
+
+      setTokens: (accessToken, refreshToken) => {
+        applyTokens(set, accessToken, refreshToken)
+      },
+
+      clearAuth: () => {
+        set((state) => {
+          state.accessToken = null
+          state.refreshToken = null
+          state.user = null
+          state.isAuthenticated = false
         })
       },
+
       logout: async () => {
         const { accessToken } = get()
         if (accessToken) {
@@ -87,18 +133,20 @@ export const useAuthStore = create<AuthState>()(
             console.error("API logout request failed", e)
           }
         }
-        set({
-          accessToken: null,
-          refreshToken: null,
-          user: null,
-          isAuthenticated: false,
+        await clearSession()
+        set((state) => {
+          state.accessToken = null
+          state.refreshToken = null
+          state.user = null
+          state.isAuthenticated = false
         })
       },
-    }),
+    })),
     {
-      name: "faith-connect-auth",
+      name: "faith-connect-user",
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ user: state.user }),
       skipHydration: true,
-    }
-  )
+    },
+  ),
 )

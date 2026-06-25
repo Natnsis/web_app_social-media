@@ -1,29 +1,19 @@
 import { post as apiPost } from "./client"
+import { AuthApiEndpoint } from "./endpoints"
+import {
+  type AuthResponse,
+  type LoginResponse,
+  authResponseSchema,
+  loginResponseSchema,
+} from "@/lib/validation/auth-response"
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+export type { LoginResponse, AuthResponse }
 
-export interface LoginResponse {
-  success: boolean
-  data: {
-    accessToken: string
-    refreshToken: string
-    roles: string[]
-  }
-  timestamp: string
-}
-
-export interface AuthResponse {
-  success: boolean
-  message?: string
-  data?: unknown
-  timestamp?: string
-}
-
-// ── Auth endpoints ─────────────────────────────────────────────────────────────
-
-/** POST /v1/auth/login  — emailOrPhone + password */
+/** POST /v1/auth/login */
 export function apiLogin(emailOrPhone: string, password: string) {
-  return apiPost<LoginResponse>("/v1/auth/login", { emailOrPhone, password })
+  return apiPost<LoginResponse>(AuthApiEndpoint.login, { emailOrPhone, password }).then(
+    (res) => loginResponseSchema.parse(res),
+  )
 }
 
 /** POST /v1/auth/register */
@@ -33,35 +23,47 @@ export function apiRegister(payload: {
   phoneNumber: string
   password: string
 }) {
-  return apiPost<AuthResponse>("/v1/auth/register", payload)
+  return apiPost<AuthResponse>(AuthApiEndpoint.register, payload).then((res) =>
+    authResponseSchema.parse(res),
+  )
 }
 
 /** POST /v1/auth/otp/resend */
 export function apiResendOtp(phoneNumber: string) {
-  return apiPost<AuthResponse>("/v1/auth/otp/resend", { phoneNumber })
+  return apiPost<AuthResponse>(AuthApiEndpoint.otpResend, { phoneNumber }).then((res) =>
+    authResponseSchema.parse(res),
+  )
 }
 
 /** POST /v1/auth/otp/verify */
 export function apiVerifyOtp(phoneNumber: string, otp: string) {
-  return apiPost<AuthResponse>("/v1/auth/otp/verify", { phoneNumber, otp })
+  return apiPost<AuthResponse>(AuthApiEndpoint.otpVerify, { phoneNumber, otp }).then((res) =>
+    authResponseSchema.parse(res),
+  )
 }
 
 /** POST /v1/auth/login/google */
 export function apiGoogleLogin(idToken: string) {
-  return apiPost<LoginResponse>("/v1/auth/login/google", { idToken })
+  return apiPost<LoginResponse>(AuthApiEndpoint.loginGoogle, { idToken }).then((res) =>
+    loginResponseSchema.parse(res),
+  )
 }
 
-/** POST /v1/auth/refresh */
+/** POST /v1/auth/refresh — prefer /api/auth/refresh for cookie-backed sessions. */
 export function apiRefreshToken(refreshToken: string) {
-  return apiPost<LoginResponse>("/v1/auth/refresh", { refreshToken })
+  return apiPost<LoginResponse>(AuthApiEndpoint.refresh, { refreshToken }).then((res) =>
+    loginResponseSchema.parse(res),
+  )
 }
 
 /** POST /v1/auth/logout */
 export function apiLogout(accessToken: string) {
-  return apiPost<AuthResponse>("/v1/auth/logout", {}, accessToken)
+  return apiPost<AuthResponse>(AuthApiEndpoint.logout, {}, accessToken).then((res) =>
+    authResponseSchema.parse(res),
+  )
 }
 
-/** POST /v1/auth/password/change  (change password while authenticated) */
+/** POST /v1/auth/password/change */
 export function apiChangePassword(
   oldPassword: string,
   newPassword: string,
@@ -69,15 +71,17 @@ export function apiChangePassword(
   accessToken: string,
 ) {
   return apiPost<AuthResponse>(
-    "/v1/auth/password/change",
+    AuthApiEndpoint.passwordChange,
     { oldPassword, newPassword, confirmPassword },
     accessToken,
-  )
+  ).then((res) => authResponseSchema.parse(res))
 }
 
 /** POST /v1/auth/password/forgot */
 export function apiForgotPassword(phoneNumber: string) {
-  return apiPost<AuthResponse>("/v1/auth/password/forgot", { phoneNumber })
+  return apiPost<AuthResponse>(AuthApiEndpoint.passwordForgot, { phoneNumber }).then((res) =>
+    authResponseSchema.parse(res),
+  )
 }
 
 /** POST /v1/auth/password/reset */
@@ -87,10 +91,14 @@ export function apiResetPassword(payload: {
   newPassword: string
   confirmPassword: string
 }) {
-  return apiPost<AuthResponse>("/v1/auth/password/reset", payload)
+  return apiPost<AuthResponse>(AuthApiEndpoint.passwordReset, payload).then((res) =>
+    authResponseSchema.parse(res),
+  )
 }
 
 /** POST /v1/auth/phone/add */
 export function apiAddPhone(phoneNumber: string, accessToken: string) {
-  return apiPost<AuthResponse>("/v1/auth/phone/add", { phoneNumber }, accessToken)
+  return apiPost<AuthResponse>(AuthApiEndpoint.phoneAdd, { phoneNumber }, accessToken).then(
+    (res) => authResponseSchema.parse(res),
+  )
 }

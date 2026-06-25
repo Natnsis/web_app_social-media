@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
+import { hydrateSession } from "@/lib/auth/session"
 import { useAuthStore } from "@/lib/store/auth"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -120,7 +121,7 @@ function DesktopSidebar() {
                             {!collapsed && <SidebarGroupLabel>{section.title}</SidebarGroupLabel>}
                             <SidebarGroupContent>
                                 <SidebarMenu>
-                                    {section.items.filter((item) => !item.ownerOnly || user?.role === "Church Owner").map(({ href, label, Icon, ActiveIcon }) => {
+                                    {section.items.filter((item) => !item.ownerOnly || user?.canManageChurch).map(({ href, label, Icon, ActiveIcon }) => {
                                         const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href)
                                         const IconComp = isActive ? ActiveIcon : Icon
                                         return (
@@ -210,26 +211,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const rehydrate = async () => {
             await useAuthStore.persist.rehydrate()
+            await hydrateSession()
             setHydrated(true)
-            const state = useAuthStore.getState()
-            if (!state.isAuthenticated) {
+            if (!useAuthStore.getState().isAuthenticated) {
                 router.replace("/login")
-            } else if (state.accessToken) {
-                try {
-                    const base64Url = state.accessToken.split(".")[1]
-                    if (base64Url) {
-                        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
-                        const jsonPayload = decodeURIComponent(
-                            atob(base64)
-                                .split("")
-                                .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-                                .join("")
-                        )
-                        console.log("AUTHORIZED USER DECODED TOKEN:", JSON.parse(jsonPayload))
-                    }
-                } catch (e) {
-                    console.error("Failed to decode token on layout mount", e)
-                }
             }
         }
         rehydrate()

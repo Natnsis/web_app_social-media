@@ -1,4 +1,5 @@
 import { io, Socket } from "socket.io-client"
+import { refreshAccessToken } from "@/lib/auth/session"
 import { useAuthStore } from "@/lib/store/auth"
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
@@ -7,24 +8,6 @@ const sockets = new Map<string, Socket>()
 
 function getToken() {
   return useAuthStore.getState().accessToken
-}
-
-async function refreshToken() {
-  const { refreshToken } = useAuthStore.getState()
-  if (!refreshToken) return null
-  try {
-    const res = await fetch(`${SOCKET_URL}/v1/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    useAuthStore.getState().setAuthData(data.data.accessToken, data.data.refreshToken)
-    return data.data.accessToken
-  } catch {
-    return null
-  }
 }
 
 export function connectNamespace(namespace: string): Socket | null {
@@ -49,7 +32,7 @@ export function connectNamespace(namespace: string): Socket | null {
   socket.on("connect_error", async (err) => {
     console.error(`[socket] Connection error on ${namespace}:`, err.message)
     if (err.message === "WS_AUTH_FAILED") {
-      const newToken = await refreshToken()
+      const newToken = await refreshAccessToken()
       if (newToken) {
         socket.auth = { token: newToken }
         socket.connect()
